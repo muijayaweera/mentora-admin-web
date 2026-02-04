@@ -4,7 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import Courses from "./pages/Courses";
 import ImageReview from "./pages/ImageReview";
 import Users from "./pages/Users";
-import Layout from "./components/Layout";
+import AdminLayout from "./layouts/AdminLayout";
 
 function App() {
   const isAuthenticated = true; // temporary
@@ -14,23 +14,16 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
 
-        <Route
-          path="/*"
-          element={
-            isAuthenticated ? (
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/courses" element={<Courses />} />
-                  <Route path="/images" element={<ImageReview />} />
-                  <Route path="/users" element={<Users />} />
-                </Routes>
-              </Layout>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
+        {isAuthenticated ? (
+          <Route element={<AdminLayout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/courses" element={<Courses />} />
+            <Route path="/imagereview" element={<ImageReview />} />
+            <Route path="/users" element={<Users />} />
+          </Route>
+        ) : (
+          <Route path="*" element={<Navigate to="/login" />} />
+        )}
       </Routes>
     </Router>
   );
