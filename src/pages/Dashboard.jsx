@@ -1,4 +1,5 @@
 import { Circle, Users, BookOpen, Image as ImageIcon, Clock } from "lucide-react";
+import { db } from "../firebase/firebase";
 
 function StatCard({ title, value, Icon }) {
   return (

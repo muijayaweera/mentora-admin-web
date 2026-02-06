@@ -1,13 +1,26 @@
 import { LayoutDashboard, BookOpen, Image, Users, LogOut } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { signOut } from "firebase/auth";
+import { auth } from "../firebase/firebase";
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+
   const items = [
     { name: "Dashboard", icon: LayoutDashboard, path: "/" },
     { name: "Courses", icon: BookOpen, path: "/courses" },
     { name: "Image Review", icon: Image, path: "/imagereview" },
     { name: "Users", icon: Users, path: "/users" },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate("/login", { replace: true });
+    } catch (e) {
+      console.error("Logout failed:", e);
+    }
+  };
 
   return (
     <aside className="h-screen w-[290px] bg-gradient-to-b from-[#D393E8] to-[#CA9DF2] flex flex-col px-6 py-8">
@@ -27,22 +40,27 @@ export default function Sidebar() {
             end={path === "/"}
             className={({ isActive }) =>
               [
-                "group no-underline relative",
-                "flex items-center gap-4",
-                "px-5 py-3 rounded-xl",
-                "text-[18px] font-medium",
-                "transition",
+                "no-underline relative flex items-center gap-4 px-5 py-3 rounded-xl text-[18px] font-medium transition",
                 isActive
                   ? "bg-white/35 text-[#1F1F1F]"
                   : "text-[#2E2E2E] hover:bg-white/25",
               ].join(" ")
             }
           >
-            {/* left indicator bar */}
-            <span className="absolute left-0 top-2 bottom-2 w-[4px] rounded-full bg-[#8B5CF6] opacity-0 group-[.active]:opacity-100" />
+            {({ isActive }) => (
+              <>
+                {/* left indicator bar */}
+                <span
+                  className={[
+                    "absolute left-0 top-2 bottom-2 w-[4px] rounded-full bg-[#8B5CF6] transition-opacity",
+                    isActive ? "opacity-100" : "opacity-0",
+                  ].join(" ")}
+                />
 
-            <Icon size={22} className="opacity-80" />
-            <span className="tracking-wide">{name}</span>
+                <Icon size={22} className="opacity-80" />
+                <span className="tracking-wide">{name}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -50,8 +68,11 @@ export default function Sidebar() {
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Logout (slightly higher + modern) */}
-      <button className="mt-6 flex items-center gap-3 px-4 py-3 rounded-xl text-[#2E2E2E] hover:bg-white/25 transition">
+      {/* Logout */}
+      <button
+        onClick={handleLogout}
+        className="mt-6 flex items-center gap-3 px-4 py-3 rounded-xl text-[#2E2E2E] hover:bg-white/25 transition"
+      >
         <LogOut size={20} className="opacity-80" />
         <span className="text-[16px] font-medium">Log Out</span>
       </button>

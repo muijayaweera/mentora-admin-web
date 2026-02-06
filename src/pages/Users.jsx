@@ -109,7 +109,7 @@ export default function Users() {
             </h1>
 
             {/* subtle stats */}
-            <div className="mt-4 grid grid-cols-2 gap-8 max-w-[420px]">
+            <div className="mt-4 grid grid-cols-2 gap-4 max-w-[420px]">
               {[
                 { label: "Total Users", value: stats.total },
                 { label: "Active Users", value: stats.active },
