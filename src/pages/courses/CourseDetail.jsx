@@ -127,12 +127,59 @@ export default function CourseDetail() {
           </button>
         </div>
 
-        {/* Empty State */}
-        {modules.length === 0 && (
-          <div className="mt-8 rounded-xl bg-[#F3F3F5] px-6 py-10 text-center text-[#6B6B6B]">
-            No modules added yet. Start by adding your first module.
+        {modules.length === 0 ? (
+  <div className="mt-8 rounded-xl bg-[#F3F3F5] px-6 py-10 text-center text-[#6B6B6B]">
+    No modules added yet. Start by adding your first module.
+  </div>
+) : (
+  <div className="mt-6">
+    {/* Table header */}
+    <div className="grid grid-cols-[90px_1fr_140px_160px_180px] items-center text-[14px] font-semibold text-[#5A5A5A] px-4">
+      <div>Order</div>
+      <div>Module Title</div>
+      <div>Type</div>
+      <div>Last Updated</div>
+      <div className="text-right">Actions</div>
+    </div>
+
+    <div className="mt-4 space-y-3">
+      {modules.map((m, idx) => (
+        <div
+          key={m.id || `${m.title}-${idx}`}
+          className="grid grid-cols-[90px_1fr_140px_160px_180px] items-center
+                     rounded-xl bg-[#F3F3F5] px-4 py-4 text-[15px] text-[#2E2E2E]"
+        >
+          <div className="font-medium">{idx + 1}</div>
+          <div className="font-medium">{m.title}</div>
+          <div className="font-medium">{m.type}</div>
+          <div className="font-medium">{m.updatedAt || "just now"}</div>
+
+          <div className="flex justify-end gap-2">
+            <button
+              className="flex items-center gap-2 rounded-full border border-[#DCDCE2] bg-white px-5 py-2
+                         text-[13px] font-medium shadow-[0_10px_18px_rgba(0,0,0,0.06)]
+                         hover:bg-[#FAFAFB] transition"
+              onClick={() => console.log("Edit module", idx)}
+            >
+              Edit
+            </button>
+
+            <button
+              className="flex items-center gap-2 rounded-full border border-red-200 bg-white px-5 py-2
+                         text-[13px] font-medium text-red-600 hover:bg-red-50 transition"
+              onClick={() => {
+                setModules((prev) => prev.filter((_, i) => i !== idx));
+              }}
+            >
+              Delete
+            </button>
           </div>
-        )}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
       </div>
 
       {/* ================= ADD MODULE MODAL ================= */}
@@ -171,13 +218,15 @@ export default function CourseDetail() {
               </button>
               <button
                 onClick={() => {
-                  setModules([
-                    ...modules,
+                  setModules((prev) => [
+                    ...prev,
                     {
-                      title: newModuleTitle,
-                      type: newModuleType,
+                        title: newModuleTitle,
+                        type: newModuleType,
+                        updatedAt: "just now",
                     },
-                  ]);
+                    ]);
+
                   setShowModuleModal(false);
                   setNewModuleTitle("");
                 }}
