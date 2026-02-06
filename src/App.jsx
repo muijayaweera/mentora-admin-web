@@ -6,6 +6,7 @@ import ImageReview from "./pages/ImageReview";
 import Users from "./pages/Users";
 import AdminLayout from "./layouts/AdminLayout";
 import AddCourse from "./pages/courses/AddCourse";
+import CourseDetail from "./pages/courses/CourseDetail";
 
 function App() {
   const isAuthenticated = true; // temporary
@@ -22,6 +23,7 @@ function App() {
             <Route path="/imagereview" element={<ImageReview />} />
             <Route path="/users" element={<Users />} />
             <Route path="/courses/new" element={<AddCourse />} />
+            <Route path="/courses/:id" element={<CourseDetail />} />
           </Route>
         ) : (
           <Route path="*" element={<Navigate to="/login" />} />

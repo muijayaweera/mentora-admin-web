@@ -283,7 +283,7 @@ export default function AddCourse() {
                 className="flex-1 rounded-xl bg-[#CFA3F1] px-6 py-3 text-[16px] font-medium text-[#1F1F1F]
                            shadow-[0_12px_24px_rgba(139,92,246,0.18)] hover:opacity-95 transition"
               >
-                Save as Draft
+                Continue
               </button>
             </div>
           </div>
