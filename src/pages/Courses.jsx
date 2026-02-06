@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Send } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const DUMMY_COURSES = [
   {
@@ -19,6 +20,7 @@ const DUMMY_COURSES = [
 ];
 
 export default function Courses() {
+  const navigate = useNavigate(); 
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -47,10 +49,7 @@ export default function Courses() {
         <button
           className="rounded-xl bg-[#CFA3F1] px-8 py-3 text-[18px] font-medium text-[#1F1F1F]
                      shadow-[0_8px_18px_rgba(139,92,246,0.18)] hover:opacity-95 transition"
-          onClick={() => {
-            // later: navigate("/courses/new")
-            console.log("Add Course clicked");
-          }}
+          onClick={() => navigate("/courses/new")}
         >
           + Add Course
         </button>
