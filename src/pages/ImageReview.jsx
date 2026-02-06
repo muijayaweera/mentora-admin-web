@@ -157,9 +157,7 @@ export default function ImageReview() {
             <h1 className="text-[40px] font-semibold text-[#3A3A3A]">
               Image Review
             </h1>
-            <p className="mt-1 text-[14px] text-[#7A7A7A]">
-              Review and label uploaded ostomy images
-            </p>
+            
           </div>
         </div>
 
@@ -190,7 +188,7 @@ export default function ImageReview() {
       </div>
 
       {/* Stats */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-5">
+      <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "Total Images", value: stats.total },
           { label: "Pending Review", value: stats.pending },
@@ -199,16 +197,17 @@ export default function ImageReview() {
         ].map((s) => (
           <div
             key={s.label}
-            className="rounded-2xl bg-white px-6 py-5
-                       shadow-[0_16px_32px_rgba(0,0,0,0.08)]"
+            className="rounded-xl bg-white px-5 py-4
+                      shadow-[0_12px_24px_rgba(0,0,0,0.06)]"
           >
-            <p className="text-[13px] text-[#7A7A7A]">{s.label}</p>
-            <p className="mt-2 text-[26px] font-semibold text-[#3A3A3A]">
+            <p className="text-[12px] text-[#7A7A7A]">{s.label}</p>
+            <p className="mt-1 text-[20px] font-semibold text-[#3A3A3A]">
               {s.value}
             </p>
           </div>
         ))}
       </div>
+
 
       {/* Main Table Card */}
       <div
@@ -237,8 +236,8 @@ export default function ImageReview() {
         </div>
 
         {/* Table header */}
-        <div className="mt-7 grid grid-cols-[90px_160px_180px_120px_150px_150px_140px] items-center text-[14px] font-semibold text-[#5A5A5A]">
-          <div>Thumb</div>
+        <div className="mt-7 grid grid-cols-[100px_160px_180px_120px_150px_150px_140px] items-center text-[14px] font-semibold text-[#5A5A5A]">
+          <div>Image</div>
           <div>Uploaded By</div>
           <div>Model Prediction</div>
           <div>Confidence</div>
@@ -252,7 +251,7 @@ export default function ImageReview() {
           {filtered.map((img) => (
             <div
               key={img.id}
-              className="grid grid-cols-[90px_160px_180px_120px_150px_150px_140px] items-center
+              className="grid grid-cols-[90px_160px_180px_120px_150px_150px_90px] items-center
                          rounded-xl bg-[#F3F3F5] px-5 py-4 text-[15px] text-[#2E2E2E]"
             >
               <div>
@@ -339,9 +338,7 @@ export default function ImageReview() {
                     className="w-full h-[360px] object-cover"
                   />
                 </div>
-                <p className="mt-3 text-[12px] text-[#7A7A7A]">
-                  (Zoom/full view can be added later.)
-                </p>
+                
               </div>
 
               {/* B + C) AI Output + Admin Label */}
@@ -369,12 +366,7 @@ export default function ImageReview() {
                       </p>
                     </div>
 
-                    <div className="col-span-2 rounded-xl bg-[#F3F3F5] px-4 py-3">
-                      <p className="text-[12px] text-[#7A7A7A]">Notes</p>
-                      <p className="mt-1 text-[#2E2E2E]">
-                        {active.notes || "—"}
-                      </p>
-                    </div>
+                    
                   </div>
                 </div>
 
@@ -401,9 +393,7 @@ export default function ImageReview() {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-2 text-[12px] text-[#7A7A7A]">
-                      This label can be used to approve images for retraining.
-                    </p>
+                    
                   </div>
                 </div>
 
@@ -414,7 +404,7 @@ export default function ImageReview() {
                     className="flex-1 rounded-xl bg-[#8B5CF6] px-6 py-3 text-[15px] font-medium text-white
                                shadow-[0_12px_24px_rgba(139,92,246,0.20)] hover:opacity-95 transition"
                   >
-                    ✅ Approve for Retraining
+                    Approve for Retraining
                   </button>
 
                   <button
@@ -422,7 +412,7 @@ export default function ImageReview() {
                     className="flex-1 rounded-xl bg-white px-6 py-3 text-[15px] font-medium text-red-600
                                border border-red-200 hover:bg-red-50 transition"
                   >
-                    ❌ Reject
+                     Reject
                   </button>
 
                   <button
@@ -430,13 +420,11 @@ export default function ImageReview() {
                     className="flex-1 rounded-xl bg-[#CFA3F1] px-6 py-3 text-[15px] font-medium text-[#1F1F1F]
                                shadow-[0_12px_24px_rgba(139,92,246,0.12)] hover:opacity-95 transition"
                   >
-                    💾 Save Review
+                    Save Review
                   </button>
                 </div>
 
-                <p className="text-[12px] text-[#7A7A7A]">
-                  Status logic: Pending → Reviewed / Approved / Rejected.
-                </p>
+                
               </div>
             </div>
           </div>
