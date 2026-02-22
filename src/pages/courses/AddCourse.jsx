@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createCourse, generateCourseCode } from "../../data/coursesService";
 import { ImagePlus } from "lucide-react";
+import { createCourse } from "../../services/courses";
+
+// simple local code generator (no extra file needed)
+function generateCourseCode(prefix = "OST") {
+  const n = Math.floor(100 + Math.random() * 900); // 100-999
+  return `${prefix}${n}`;
+}
 
 export default function AddCourse() {
   const navigate = useNavigate();
@@ -30,7 +36,7 @@ export default function AddCourse() {
     return "";
   }
 
-  function handleSaveDraft(e) {
+  async function handleContinue(e) {
     e.preventDefault();
     setError("");
 
@@ -41,21 +47,25 @@ export default function AddCourse() {
     }
 
     try {
-      const created = createCourse({
+      // create in Firestore (draft by default)
+      const id = await createCourse({
         title,
         code,
         description,
-        status, // default Draft
+        status: status.toLowerCase() === "published" ? "published" : "draft",
+        modulesCount: 0,
+
+        // optional meta (we can store now; harmless and nice)
         estimatedDuration,
         category,
         targetAudience,
-        thumbnailUrl: "", // placeholder for now
+        thumbnailUrl: "",
       });
 
-      // best flow: go to course detail page
-      // (we’ll build it next: /courses/:id)
-      navigate(`/courses/${created.id}`);
+      // go to course detail
+      navigate(`/courses/${id}`);
     } catch (err) {
+      console.error(err);
       setError(err?.message || "Something went wrong. Please try again.");
     }
   }
@@ -70,12 +80,12 @@ export default function AddCourse() {
             <h1 className="text-[40px] font-semibold text-[#3A3A3A]">
               Add Course
             </h1>
-            
           </div>
         </div>
 
         <button
           onClick={handleCancel}
+          type="button"
           className="rounded-xl bg-white px-6 py-3 text-[16px] font-medium text-[#2E2E2E]
                      border border-[#E5E5EA] shadow-[0_10px_22px_rgba(0,0,0,0.06)]
                      hover:bg-[#FAFAFB] transition"
@@ -86,7 +96,7 @@ export default function AddCourse() {
 
       {/* Content Card */}
       <form
-        onSubmit={handleSaveDraft}
+        onSubmit={handleContinue}
         className="mt-10 w-full rounded-2xl bg-white px-10 py-10
                    shadow-[0_18px_40px_rgba(0,0,0,0.08)]"
       >
@@ -105,7 +115,6 @@ export default function AddCourse() {
               <h2 className="text-[18px] font-semibold text-[#3A3A3A]">
                 Basic Course Information
               </h2>
-             
 
               <div className="mt-6 grid grid-cols-12 gap-5">
                 <div className="col-span-12">
@@ -134,7 +143,6 @@ export default function AddCourse() {
                                px-5 py-3 text-[15px] outline-none
                                focus:border-[#8B5CF6]"
                   />
-                  
                 </div>
 
                 <div className="col-span-12 md:col-span-6">
@@ -188,7 +196,6 @@ export default function AddCourse() {
               <h2 className="text-[18px] font-semibold text-[#3A3A3A]">
                 Meta Information
               </h2>
-              
 
               <div className="mt-6 grid grid-cols-12 gap-5">
                 <div className="col-span-12 md:col-span-4">
@@ -241,7 +248,6 @@ export default function AddCourse() {
               <h2 className="text-[18px] font-semibold text-[#3A3A3A]">
                 Thumbnail / Cover
               </h2>
-              
 
               <div className="mt-5 rounded-2xl border border-dashed border-[#D7D7DD] bg-white p-6">
                 <div className="flex flex-col items-center text-center gap-3">
@@ -251,7 +257,6 @@ export default function AddCourse() {
                   <p className="text-[14px] font-medium text-[#4A4A4A]">
                     Upload coming soon
                   </p>
-                  
 
                   <button
                     type="button"

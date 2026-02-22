@@ -1,38 +1,40 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const DUMMY_COURSES = [
-  {
-    code: "OC01",
-    title: "Basics of Ostomy Care",
-    modules: 4,
-    status: "Published",
-    lastUpdate: "1 week ago",
-  },
-  {
-    code: "OC02",
-    title: "Colostomy VS Ileastomy",
-    modules: 6,
-    status: "Draft",
-    lastUpdate: "3 week ago",
-  },
-];
+import { fetchCourses } from "../services/courses";
 
 export default function Courses() {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
+
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await fetchCourses();
+        setCourses(data);
+      } catch (e) {
+        console.error("Failed to fetch courses:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return DUMMY_COURSES;
-    return DUMMY_COURSES.filter(
-      (c) =>
-        c.code.toLowerCase().includes(q) ||
-        c.title.toLowerCase().includes(q) ||
-        c.status.toLowerCase().includes(q)
-    );
-  }, [search]);
+    if (!q) return courses;
+
+    return courses.filter((c) => {
+      const code = (c.code || "").toLowerCase();
+      const title = (c.title || "").toLowerCase();
+      const status = (c.status || "").toLowerCase();
+      return code.includes(q) || title.includes(q) || status.includes(q);
+    });
+  }, [search, courses]);
 
   return (
     <div className="min-h-screen w-full bg-[#F6F6F7] px-10 py-10 font-[Poppins]">
@@ -70,6 +72,7 @@ export default function Courses() {
                        hover:opacity-95 transition"
             onClick={() => console.log("Search submit:", search)}
             aria-label="Search"
+            type="button"
           >
             <Send size={18} className="text-white" />
           </button>
@@ -92,33 +95,48 @@ export default function Courses() {
         </div>
 
         <div className="mt-5 space-y-4">
-          {filtered.map((c) => (
-            <div
-              key={c.code}
-              className="grid grid-cols-[120px_1fr_120px_140px_160px_120px] items-center
-                         rounded-xl bg-[#F3F3F5] px-6 py-4 text-[16px] text-[#2E2E2E]"
-            >
-              <div className="font-medium">{c.code}</div>
-              <div className="font-medium">{c.title}</div>
-              <div className="font-medium">{c.modules}</div>
-              <div className="font-medium">{c.status}</div>
-              <div className="font-medium">{c.lastUpdate}</div>
-
-              <div className="flex justify-end">
-                <button
-                  className="rounded-full border border-[#DCDCE2] bg-white px-8 py-2
-                             text-[14px] font-medium text-[#2E2E2E]
-                             shadow-[0_10px_18px_rgba(0,0,0,0.06)]
-                             hover:bg-[#FAFAFB] transition"
-                  onClick={() => console.log("View:", c.code)}
-                >
-                  View
-                </button>
-              </div>
+          {loading && (
+            <div className="rounded-xl bg-[#F3F3F5] px-6 py-10 text-center text-[#6B6B6B]">
+              Loading courses...
             </div>
-          ))}
+          )}
 
-          {filtered.length === 0 && (
+          {!loading &&
+            filtered.map((c) => (
+              <div
+                key={c.id}
+                className="grid grid-cols-[120px_1fr_120px_140px_160px_120px] items-center
+                           rounded-xl bg-[#F3F3F5] px-6 py-4 text-[16px] text-[#2E2E2E]"
+              >
+                <div className="font-medium">{c.code || "-"}</div>
+                <div className="font-medium">{c.title || "-"}</div>
+                <div className="font-medium">{c.modulesCount ?? 0}</div>
+                <div className="font-medium">
+                  {c.status
+                    ? c.status.charAt(0).toUpperCase() + c.status.slice(1)
+                    : "Draft"}
+                </div>
+                <div className="font-medium">
+                  {/* simple placeholder until we format timestamps */}
+                  —
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    className="rounded-full border border-[#DCDCE2] bg-white px-8 py-2
+                               text-[14px] font-medium text-[#2E2E2E]
+                               shadow-[0_10px_18px_rgba(0,0,0,0.06)]
+                               hover:bg-[#FAFAFB] transition"
+                    onClick={() => navigate(`/courses/${c.id}`)}
+                    type="button"
+                  >
+                    View
+                  </button>
+                </div>
+              </div>
+            ))}
+
+          {!loading && filtered.length === 0 && (
             <div className="rounded-xl bg-[#F3F3F5] px-6 py-10 text-center text-[#6B6B6B]">
               No courses found.
             </div>
