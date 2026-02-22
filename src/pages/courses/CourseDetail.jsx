@@ -2,6 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { fetchCourseById, updateCourse, deleteCourse } from "../../services/courses";
 import { Plus, Pencil, Trash2, CheckCircle, Save, X } from "lucide-react";
+import { fetchModules, addModule } from "../../services/modules";
 
 export default function CourseDetail() {
   const { id } = useParams();
@@ -50,7 +51,8 @@ export default function CourseDetail() {
           estimatedDuration: found.estimatedDuration || "",
           targetAudience: found.targetAudience || "",
         });
-        setModules([]); // later from Firestore
+        const mods = await fetchModules(id);
+        setModules(mods);
       } catch (e) {
         console.error("Failed to load course:", e);
       } finally {
@@ -140,6 +142,31 @@ async function handleDelete() {
   } catch (e) {
     console.error(e);
     setError("Failed to delete course.");
+  }
+}
+
+async function handleAddModule() {
+  if (!newModuleTitle.trim()) return;
+
+  try {
+    const newId = await addModule(id, {
+      title: newModuleTitle.trim(),
+      type: newModuleType,
+    });
+
+    setModules((prev) => [
+      ...prev,
+      {
+        id: newId,
+        title: newModuleTitle.trim(),
+        type: newModuleType,
+      },
+    ]);
+
+    setShowModuleModal(false);
+    setNewModuleTitle("");
+  } catch (e) {
+    console.error(e);
   }
 }
 
@@ -422,20 +449,10 @@ async function handleDelete() {
               >
                 Cancel
               </button>
-              <button
-                onClick={() => {
-                  setModules((prev) => [
-                    ...prev,
-                    {
-                      title: newModuleTitle,
-                      type: newModuleType,
-                      updatedAt: "just now",
-                    },
-                  ]);
 
-                  setShowModuleModal(false);
-                  setNewModuleTitle("");
-                }}
+              
+                <button
+                onClick={handleAddModule}
                 className="rounded-xl bg-[#8B5CF6] px-4 py-2 text-white"
                 type="button"
               >
