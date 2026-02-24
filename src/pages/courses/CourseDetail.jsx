@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { fetchCourseById, updateCourse, deleteCourse } from "../../services/courses";
 import { Plus, Pencil, Trash2, CheckCircle, Save, X } from "lucide-react";
-import { fetchModules, addModule, deleteModule } from "../../services/modules";
+import { fetchModules, addModule, deleteModule, updateModule } from "../../services/modules";
 
 export default function CourseDetail() {
   const { id } = useParams();
@@ -32,6 +32,12 @@ export default function CourseDetail() {
   const [newModuleTitle, setNewModuleTitle] = useState("");
   const [newModuleType, setNewModuleType] = useState("Text");
   const [moduleError, setModuleError] = useState("");
+
+  const [editingModuleId, setEditingModuleId] = useState(null);
+  const [editModuleTitle, setEditModuleTitle] = useState("");
+  const [editModuleType, setEditModuleType] = useState("Text");
+  const [moduleSaving, setModuleSaving] = useState(false);
+  const [newModuleContent, setNewModuleContent] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -154,11 +160,24 @@ async function handleAddModule() {
     return;
   }
 
+  // ✅ if Text, content is required (optional rule; you can remove this if you want)
+  if (newModuleType === "Text" && !newModuleContent.trim()) {
+    setModuleError("Please add content for this text module.");
+    return;
+  }
+
   try {
-    const newId = await addModule(id, {
+    const payload = {
       title: newModuleTitle.trim(),
       type: newModuleType,
-    });
+    };
+
+    // ✅ only store text content for Text modules
+    if (newModuleType === "Text") {
+      payload.contentText = newModuleContent.trim();
+    }
+
+    const newId = await addModule(id, payload);
 
     await updateCourse(id, {
       modulesCount: modules.length + 1,
@@ -168,14 +187,16 @@ async function handleAddModule() {
       ...prev,
       {
         id: newId,
-        title: newModuleTitle.trim(),
-        type: newModuleType,
+        title: payload.title,
+        type: payload.type,
+        contentText: payload.contentText || "", // keep in UI state too
       },
     ]);
 
     setShowModuleModal(false);
     setNewModuleTitle("");
     setNewModuleType("Text");
+    setNewModuleContent("");
   } catch (e) {
     console.error(e);
     setModuleError(e?.message || "Failed to add module.");
@@ -219,6 +240,53 @@ async function handlePublish() {
   } catch (e) {
     console.error(e);
     setError("Failed to publish course.");
+  }
+}
+
+function startEditModule(m) {
+  setModuleError("");
+  setEditingModuleId(m.id);
+  setEditModuleTitle(m.title || "");
+  setEditModuleType(m.type || "Text");
+}
+
+function cancelEditModule() {
+  setModuleError("");
+  setEditingModuleId(null);
+  setEditModuleTitle("");
+  setEditModuleType("Text");
+}
+
+async function saveModuleEdit(moduleId) {
+  setModuleError("");
+
+  if (!editModuleTitle.trim()) {
+    setModuleError("Module title is required.");
+    return;
+  }
+
+  setModuleSaving(true);
+  try {
+    await updateModule(id, moduleId, {
+      title: editModuleTitle.trim(),
+      type: editModuleType,
+    });
+
+    // update UI instantly
+    setModules((prev) =>
+      prev.map((m) =>
+        m.id === moduleId
+          ? { ...m, title: editModuleTitle.trim(), type: editModuleType }
+          : m
+      )
+    );
+
+    cancelEditModule();
+  } catch (e) {
+    console.error(e);
+    setModuleError(e?.message || "Failed to update module.");
+  } finally {
+    setModuleSaving(false);
   }
 }
 
@@ -400,7 +468,7 @@ async function handlePublish() {
               />
             ) : (
               course.category
-            )}
+            )}  
           </p>
 
           {/* duration */}
@@ -463,84 +531,168 @@ async function handlePublish() {
           </div>
         ) : (
         <div className="mt-6 space-y-3">
-          {modules.map((m, idx) => (
-            <div
-              key={m.id}
-              className="flex items-center justify-between rounded-xl bg-[#F3F3F5] px-5 py-4"
-            >
-              <div>
-                <p className="font-medium text-[#2E2E2E]">
-                  {idx + 1}. {m.title}
-                </p>
-                <p className="text-[13px] text-[#6B6B6B]">{m.type}</p>
-              </div>
+          {modules.map((m, idx) => {
+  const isEditingThis = editingModuleId === m.id;
 
-              <button
-                type="button"
-                onClick={() => handleDeleteModule(m.id)}
-                className="rounded-full border border-red-200 bg-white px-5 py-2 text-[13px] font-medium text-red-600 hover:bg-red-50 transition"
-              >
-                Delete
-              </button>
-            </div>
-          ))}
+  return (
+    <div
+      key={m.id}
+      className="flex items-center justify-between rounded-xl bg-[#F3F3F5] px-5 py-4"
+    >
+      <div className="flex-1">
+        {isEditingThis ? (
+          <div className="flex flex-col gap-3">
+            <input
+              value={editModuleTitle}
+              onChange={(e) => setEditModuleTitle(e.target.value)}
+              className="w-full rounded-xl border border-[#E5E5EA] bg-white px-4 py-3 text-[14px] outline-none focus:border-[#8B5CF6]"
+              placeholder="Module title"
+            />
+
+            <select
+              value={editModuleType}
+              onChange={(e) => setEditModuleType(e.target.value)}
+              className="w-full rounded-xl border border-[#E5E5EA] bg-white px-4 py-3 text-[14px] outline-none focus:border-[#8B5CF6]"
+            >
+              <option>Text</option>
+              <option>Video</option>
+              <option>PDF</option>
+            </select>
+
+            {moduleError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+                {moduleError}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <p className="font-medium text-[#2E2E2E]">
+              {idx + 1}. {m.title}
+            </p>
+            <p className="text-[13px] text-[#6B6B6B]">{m.type}</p>
+          </>
+        )}
+      </div>
+
+      <div className="ml-4 flex gap-2">
+        {!isEditingThis ? (
+          <>
+            <button
+              type="button"
+              onClick={() => startEditModule(m)}
+              className="rounded-full border border-[#DCDCE2] bg-white px-5 py-2 text-[13px] font-medium hover:bg-[#FAFAFB] transition"
+            >
+              Edit
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDeleteModule(m.id)}
+              className="rounded-full border border-red-200 bg-white px-5 py-2 text-[13px] font-medium text-red-600 hover:bg-red-50 transition"
+            >
+              Delete
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={cancelEditModule}
+              disabled={moduleSaving}
+              className="rounded-full border border-[#DCDCE2] bg-white px-5 py-2 text-[13px] font-medium hover:bg-[#FAFAFB] disabled:opacity-60 transition"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={() => saveModuleEdit(m.id)}
+              disabled={moduleSaving}
+              className="rounded-full bg-[#8B5CF6] px-5 py-2 text-[13px] font-medium text-white hover:opacity-95 disabled:opacity-60 transition"
+            >
+              {moduleSaving ? "Saving..." : "Save"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+})}
         </div>
       )}
       </div>
 
       {/* ================= ADD MODULE MODAL ================= */}
-      {showModuleModal && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-blacsk/40">
-          <div className="w-[420px] rounded-2xl bg-white px-6 py-6">
-            <h3 className="text-[18px] font-semibold text-[#3A3A3A]">
-              Add Module
-            </h3>
+{showModuleModal && (
+  <div className="fixed inset-0 z-50 grid place-items-center bg-black/40">
+    <div className="w-[520px] rounded-2xl bg-white px-6 py-6">
+      <h3 className="text-[18px] font-semibold text-[#3A3A3A]">
+        Add Module
+      </h3>
 
-            <div className="mt-5 space-y-4">
-              {moduleError && (
-                <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
-                  {moduleError}
-                </div>
-              )}
-              <input
-                value={newModuleTitle}
-                onChange={(e) => setNewModuleTitle(e.target.value)}
-                placeholder="Module title"
-                className="w-full rounded-xl border border-[#E5E5EA] px-4 py-3"
-              />
-
-              <select
-                value={newModuleType}
-                onChange={(e) => setNewModuleType(e.target.value)}
-                className="w-full rounded-xl border border-[#E5E5EA] px-4 py-3"
-              >
-                <option>Text</option>
-                <option>Video</option>
-                <option>PDF</option>
-              </select>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setShowModuleModal(false)}
-                className="rounded-xl bg-white px-4 py-2 border"
-                type="button"
-              >
-                Cancel
-              </button>
-
-              
-                <button
-                onClick={handleAddModule}
-                className="rounded-xl bg-[#8B5CF6] px-4 py-2 text-white"
-                type="button"
-              >
-                Save
-              </button>
-            </div>
+      <div className="mt-5 space-y-4">
+        {moduleError && (
+          <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+            {moduleError}
           </div>
-        </div>
-      )}
+        )}
+
+        <input
+          value={newModuleTitle}
+          onChange={(e) => setNewModuleTitle(e.target.value)}
+          placeholder="Module title"
+          className="w-full rounded-xl border border-[#E5E5EA] px-4 py-3"
+        />
+
+        <select
+          value={newModuleType}
+          onChange={(e) => setNewModuleType(e.target.value)}
+          className="w-full rounded-xl border border-[#E5E5EA] px-4 py-3"
+        >
+          <option>Text</option>
+          <option>Video</option>
+          <option>PDF</option>
+        </select>
+
+        {/* ✅ TEXTAREA GOES HERE */}
+        {newModuleType === "Text" && (
+          <textarea
+            value={newModuleContent}
+            onChange={(e) => setNewModuleContent(e.target.value)}
+            placeholder="Write module content here..."
+            rows={7}
+            className="w-full resize-none rounded-xl border border-[#E5E5EA] px-4 py-3"
+          />
+        )}
+      </div>
+
+      <div className="mt-6 flex justify-end gap-3">
+        <button
+          onClick={() => {
+            setShowModuleModal(false);
+            setModuleError("");
+            setNewModuleTitle("");
+            setNewModuleType("Text");
+            setNewModuleContent("");
+          }}
+          className="rounded-xl bg-white px-4 py-2 border"
+          type="button"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={handleAddModule}
+          className="rounded-xl bg-[#8B5CF6] px-4 py-2 text-white"
+          type="button"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+)}  
     </div>
   );
 }
