@@ -31,6 +31,7 @@ export default function CourseDetail() {
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [newModuleTitle, setNewModuleTitle] = useState("");
   const [newModuleType, setNewModuleType] = useState("Text");
+  const [moduleError, setModuleError] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -146,7 +147,12 @@ async function handleDelete() {
 }
 
 async function handleAddModule() {
-  if (!newModuleTitle.trim()) return;
+  setModuleError("");
+
+  if (!newModuleTitle.trim()) {
+    setModuleError("Module title is required.");
+    return;
+  }
 
   try {
     const newId = await addModule(id, {
@@ -165,8 +171,10 @@ async function handleAddModule() {
 
     setShowModuleModal(false);
     setNewModuleTitle("");
+    setNewModuleType("Text");
   } catch (e) {
     console.error(e);
+    setModuleError(e?.message || "Failed to add module.");
   }
 }
 
@@ -410,8 +418,22 @@ async function handleAddModule() {
             No modules added yet. Start by adding your first module.
           </div>
         ) : (
-          <div className="mt-6">{/* same as your existing modules table */}</div>
-        )}
+        <div className="mt-6 space-y-3">
+          {modules.map((m, idx) => (
+            <div
+              key={m.id}
+              className="flex items-center justify-between rounded-xl bg-[#F3F3F5] px-5 py-4"
+            >
+              <div>
+                <p className="font-medium text-[#2E2E2E]">
+                  {idx + 1}. {m.title}
+                </p>
+                <p className="text-[13px] text-[#6B6B6B]">{m.type}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       </div>
 
       {/* ================= ADD MODULE MODAL ================= */}
@@ -423,6 +445,11 @@ async function handleAddModule() {
             </h3>
 
             <div className="mt-5 space-y-4">
+              {moduleError && (
+  <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+    {moduleError}
+  </div>
+)}
               <input
                 value={newModuleTitle}
                 onChange={(e) => setNewModuleTitle(e.target.value)}
