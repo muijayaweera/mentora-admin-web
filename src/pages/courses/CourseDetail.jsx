@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { fetchCourseById, updateCourse, deleteCourse } from "../../services/courses";
 import { Plus, Pencil, Trash2, CheckCircle, Save, X } from "lucide-react";
-import { fetchModules, addModule } from "../../services/modules";
+import { fetchModules, addModule, deleteModule } from "../../services/modules";
 
 export default function CourseDetail() {
   const { id } = useParams();
@@ -175,6 +175,19 @@ async function handleAddModule() {
   } catch (e) {
     console.error(e);
     setModuleError(e?.message || "Failed to add module.");
+  }
+}
+
+async function handleDeleteModule(moduleId) {
+  const ok = window.confirm("Delete this module? This cannot be undone.");
+  if (!ok) return;
+
+  try {
+    await deleteModule(id, moduleId);
+    setModules((prev) => prev.filter((m) => m.id !== moduleId));
+  } catch (e) {
+    console.error(e);
+    setError("Failed to delete module.");
   }
 }
 
@@ -430,6 +443,14 @@ async function handleAddModule() {
                 </p>
                 <p className="text-[13px] text-[#6B6B6B]">{m.type}</p>
               </div>
+
+              <button
+                type="button"
+                onClick={() => handleDeleteModule(m.id)}
+                className="rounded-full border border-red-200 bg-white px-5 py-2 text-[13px] font-medium text-red-600 hover:bg-red-50 transition"
+              >
+                Delete
+              </button>
             </div>
           ))}
         </div>
@@ -438,7 +459,7 @@ async function handleAddModule() {
 
       {/* ================= ADD MODULE MODAL ================= */}
       {showModuleModal && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-blacsk/40">
           <div className="w-[420px] rounded-2xl bg-white px-6 py-6">
             <h3 className="text-[18px] font-semibold text-[#3A3A3A]">
               Add Module
@@ -446,10 +467,10 @@ async function handleAddModule() {
 
             <div className="mt-5 space-y-4">
               {moduleError && (
-  <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
-    {moduleError}
-  </div>
-)}
+                <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+                  {moduleError}
+                </div>
+              )}
               <input
                 value={newModuleTitle}
                 onChange={(e) => setNewModuleTitle(e.target.value)}

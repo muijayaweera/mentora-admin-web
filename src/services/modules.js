@@ -5,6 +5,8 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  doc,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "../firebase/firebase";
 
@@ -32,4 +34,9 @@ export async function addModule(courseId, module) {
   });
 
   return docRef.id;
+}
+
+export async function deleteModule(courseId, moduleId) {
+  const ref = doc(db, "courses", courseId, "modules", moduleId);
+  await deleteDoc(ref);
 }
