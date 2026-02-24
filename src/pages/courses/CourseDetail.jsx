@@ -160,6 +160,10 @@ async function handleAddModule() {
       type: newModuleType,
     });
 
+    await updateCourse(id, {
+      modulesCount: modules.length + 1,
+    });
+
     setModules((prev) => [
       ...prev,
       {
@@ -184,10 +188,37 @@ async function handleDeleteModule(moduleId) {
 
   try {
     await deleteModule(id, moduleId);
+    await updateCourse(id, {
+      modulesCount: modules.length - 1,
+    });
     setModules((prev) => prev.filter((m) => m.id !== moduleId));
   } catch (e) {
     console.error(e);
     setError("Failed to delete module.");
+  }
+}
+
+async function handlePublish() {
+  if (modules.length === 0) {
+    setError("Add at least one module before publishing.");
+    return;
+  }
+
+  try {
+    await updateCourse(id, { status: "published" });
+
+    setCourse((prev) => ({
+      ...prev,
+      status: "published",
+    }));
+
+    setForm((prev) => ({
+      ...prev,
+      status: "published",
+    }));
+  } catch (e) {
+    console.error(e);
+    setError("Failed to publish course.");
   }
 }
 
@@ -282,7 +313,7 @@ async function handleDeleteModule(moduleId) {
                   : "bg-[#E5E5EA] text-[#9A9A9A] cursor-not-allowed"
               }`}
             type="button"
-            onClick={() => console.log("publish placeholder")}
+            onClick={handlePublish}
             title={!canPublish ? "Add at least 1 module to publish" : "Publish"}
           >
             <CheckCircle size={18} />
