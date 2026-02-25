@@ -11,7 +11,7 @@ export default function CourseDetail() {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // inline edit state
+  // course inline edit state
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -26,18 +26,20 @@ export default function CourseDetail() {
     targetAudience: "",
   });
 
-  // modules still local for now
+  // modules
   const [modules, setModules] = useState([]);
-  const [showModuleModal, setShowModuleModal] = useState(false);
-  const [newModuleTitle, setNewModuleTitle] = useState("");
-  const [newModuleType, setNewModuleType] = useState("Text");
-  const [moduleError, setModuleError] = useState("");
 
-  const [editingModuleId, setEditingModuleId] = useState(null);
-  const [editModuleTitle, setEditModuleTitle] = useState("");
-  const [editModuleType, setEditModuleType] = useState("Text");
+  // ===== Big Module Editor Modal State (Add + Edit) =====
+  const [moduleModalOpen, setModuleModalOpen] = useState(false);
+  const [moduleModalMode, setModuleModalMode] = useState("add"); // "add" | "edit"
+  const [activeModuleId, setActiveModuleId] = useState(null);
+
+  const [moduleTitle, setModuleTitle] = useState("");
+  const [modulePreview, setModulePreview] = useState("");
+  const [moduleContent, setModuleContent] = useState("");
+
   const [moduleSaving, setModuleSaving] = useState(false);
-  const [newModuleContent, setNewModuleContent] = useState("");
+  const [moduleError, setModuleError] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -48,6 +50,7 @@ export default function CourseDetail() {
           navigate("/courses");
           return;
         }
+
         setCourse(found);
         setForm({
           title: found.title || "",
@@ -58,6 +61,7 @@ export default function CourseDetail() {
           estimatedDuration: found.estimatedDuration || "",
           targetAudience: found.targetAudience || "",
         });
+
         const mods = await fetchModules(id);
         setModules(mods);
       } catch (e) {
@@ -80,8 +84,6 @@ export default function CourseDetail() {
   }
 
   if (!course) return null;
-
-  const statusLabel = form.status === "published" ? "Published" : "Draft";
 
   function startEdit() {
     setError("");
@@ -121,12 +123,7 @@ export default function CourseDetail() {
         targetAudience: form.targetAudience.trim(),
       });
 
-      // update local course state too (so UI updates instantly)
-      const updated = {
-        ...course,
-        ...form,
-      };
-      setCourse(updated);
+      setCourse((prev) => ({ ...prev, ...form }));
       setIsEditing(false);
     } catch (e) {
       console.error(e);
@@ -136,170 +133,129 @@ export default function CourseDetail() {
     }
   }
 
-async function handleDelete() {
-  const confirmDelete = window.confirm(
-    "Are you sure you want to delete this course? This cannot be undone."
-  );
+  async function handleDelete() {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this course? This cannot be undone."
+    );
+    if (!confirmDelete) return;
 
-  if (!confirmDelete) return;
-
-  try {
-    await deleteCourse(id);
-    navigate("/courses");
-  } catch (e) {
-    console.error(e);
-    setError("Failed to delete course.");
-  }
-}
-
-async function handleAddModule() {
-  setModuleError("");
-
-  if (!newModuleTitle.trim()) {
-    setModuleError("Module title is required.");
-    return;
+    try {
+      await deleteCourse(id);
+      navigate("/courses");
+    } catch (e) {
+      console.error(e);
+      setError("Failed to delete course.");
+    }
   }
 
-  // ✅ if Text, content is required (optional rule; you can remove this if you want)
-  if (newModuleType === "Text" && !newModuleContent.trim()) {
-    setModuleError("Please add content for this text module.");
-    return;
-  }
-
-  try {
-    const payload = {
-      title: newModuleTitle.trim(),
-      type: newModuleType,
-    };
-
-    // ✅ only store text content for Text modules
-    if (newModuleType === "Text") {
-      payload.contentText = newModuleContent.trim();
+  async function handlePublish() {
+    if (modules.length === 0) {
+      setError("Add at least one module before publishing.");
+      return;
     }
 
-    const newId = await addModule(id, payload);
+    try {
+      await updateCourse(id, { status: "published" });
 
-    await updateCourse(id, {
-      modulesCount: modules.length + 1,
-    });
-
-    setModules((prev) => [
-      ...prev,
-      {
-        id: newId,
-        title: payload.title,
-        type: payload.type,
-        contentText: payload.contentText || "", // keep in UI state too
-      },
-    ]);
-
-    setShowModuleModal(false);
-    setNewModuleTitle("");
-    setNewModuleType("Text");
-    setNewModuleContent("");
-  } catch (e) {
-    console.error(e);
-    setModuleError(e?.message || "Failed to add module.");
-  }
-}
-
-async function handleDeleteModule(moduleId) {
-  const ok = window.confirm("Delete this module? This cannot be undone.");
-  if (!ok) return;
-
-  try {
-    await deleteModule(id, moduleId);
-    await updateCourse(id, {
-      modulesCount: modules.length - 1,
-    });
-    setModules((prev) => prev.filter((m) => m.id !== moduleId));
-  } catch (e) {
-    console.error(e);
-    setError("Failed to delete module.");
-  }
-}
-
-async function handlePublish() {
-  if (modules.length === 0) {
-    setError("Add at least one module before publishing.");
-    return;
+      setCourse((prev) => ({ ...prev, status: "published" }));
+      setForm((prev) => ({ ...prev, status: "published" }));
+    } catch (e) {
+      console.error(e);
+      setError("Failed to publish course.");
+    }
   }
 
-  try {
-    await updateCourse(id, { status: "published" });
-
-    setCourse((prev) => ({
-      ...prev,
-      status: "published",
-    }));
-
-    setForm((prev) => ({
-      ...prev,
-      status: "published",
-    }));
-  } catch (e) {
-    console.error(e);
-    setError("Failed to publish course.");
-  }
-}
-
-function startEditModule(m) {
-  setModuleError("");
-  setEditingModuleId(m.id);
-  setEditModuleTitle(m.title || "");
-  setEditModuleType(m.type || "Text");
-}
-
-function cancelEditModule() {
-  setModuleError("");
-  setEditingModuleId(null);
-  setEditModuleTitle("");
-  setEditModuleType("Text");
-}
-
-async function saveModuleEdit(moduleId) {
-  setModuleError("");
-
-  if (!editModuleTitle.trim()) {
-    setModuleError("Module title is required.");
-    return;
+  // ===== Module modal handlers =====
+  function openAddModuleModal() {
+    setModuleError("");
+    setModuleModalMode("add");
+    setActiveModuleId(null);
+    setModuleTitle("");
+    setModulePreview("");
+    setModuleContent("");
+    setModuleModalOpen(true);
   }
 
-  setModuleSaving(true);
-  try {
-    await updateModule(id, moduleId, {
-      title: editModuleTitle.trim(),
-      type: editModuleType,
-    });
-
-    // update UI instantly
-    setModules((prev) =>
-      prev.map((m) =>
-        m.id === moduleId
-          ? { ...m, title: editModuleTitle.trim(), type: editModuleType }
-          : m
-      )
-    );
-
-    cancelEditModule();
-  } catch (e) {
-    console.error(e);
-    setModuleError(e?.message || "Failed to update module.");
-  } finally {
-    setModuleSaving(false);
+  function openEditModuleModal(m) {
+    setModuleError("");
+    setModuleModalMode("edit");
+    setActiveModuleId(m.id);
+    setModuleTitle(m.title || "");
+    setModulePreview(m.preview || "");
+    setModuleContent(m.contentText || "");
+    setModuleModalOpen(true);
   }
-}
+
+  function closeModuleModal() {
+    setModuleModalOpen(false);
+    setModuleError("");
+  }
+
+  async function saveModule() {
+    setModuleError("");
+
+    if (!moduleTitle.trim()) return setModuleError("Module title is required.");
+    if (!modulePreview.trim())
+      return setModuleError("Preview sentence is required.");
+    if (!moduleContent.trim()) return setModuleError("Content is required.");
+
+    setModuleSaving(true);
+    try {
+      const payload = {
+        title: moduleTitle.trim(),
+        preview: modulePreview.trim(),
+        contentText: moduleContent.trim(),
+        type: "Text", // ✅ Text-only
+      };
+
+      if (moduleModalMode === "add") {
+        const newId = await addModule(id, payload);
+
+        await updateCourse(id, { modulesCount: modules.length + 1 });
+
+        setModules((prev) => [...prev, { id: newId, ...payload }]);
+      } else {
+        await updateModule(id, activeModuleId, payload);
+
+        setModules((prev) =>
+          prev.map((m) => (m.id === activeModuleId ? { ...m, ...payload } : m))
+        );
+      }
+
+      closeModuleModal();
+    } catch (e) {
+      console.error(e);
+      setModuleError(e?.message || "Failed to save module.");
+    } finally {
+      setModuleSaving(false);
+    }
+  }
+
+  async function handleDeleteModule(moduleId) {
+    const ok = window.confirm("Delete this module? This cannot be undone.");
+    if (!ok) return;
+
+    try {
+      await deleteModule(id, moduleId);
+      await updateCourse(id, { modulesCount: Math.max(modules.length - 1, 0) });
+      setModules((prev) => prev.filter((m) => m.id !== moduleId));
+    } catch (e) {
+      console.error(e);
+      setError("Failed to delete module.");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#F6F6F7] px-10 py-10 font-[Poppins]">
       {/* ================= HEADER ================= */}
       <div className="flex items-start justify-between">
         <div className="w-full max-w-[720px]">
-          {/* Title */}
           {isEditing ? (
             <input
               value={form.title}
-              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, title: e.target.value }))
+              }
               className="w-full rounded-xl border border-[#E5E5EA] bg-white px-4 py-3 text-[22px] font-semibold text-[#3A3A3A] outline-none focus:border-[#8B5CF6]"
               placeholder="Course title"
             />
@@ -310,22 +266,24 @@ async function saveModuleEdit(moduleId) {
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            {/* Code */}
             {isEditing ? (
               <div className="flex items-center gap-2">
                 <span className="text-[14px] text-[#7A7A7A]">Code:</span>
                 <input
                   value={form.code}
-                  onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, code: e.target.value }))
+                  }
                   className="w-[140px] rounded-lg border border-[#E5E5EA] bg-white px-3 py-2 text-[14px] outline-none focus:border-[#8B5CF6]"
                   placeholder="OST101"
                 />
               </div>
             ) : (
-              <span className="text-[14px] text-[#7A7A7A]">Code: {course.code}</span>
+              <span className="text-[14px] text-[#7A7A7A]">
+                Code: {course.code}
+              </span>
             )}
 
-            {/* Status */}
             {isEditing ? (
               <div className="flex gap-2">
                 {[
@@ -337,7 +295,9 @@ async function saveModuleEdit(moduleId) {
                     <button
                       key={s.value}
                       type="button"
-                      onClick={() => setForm((p) => ({ ...p, status: s.value }))}
+                      onClick={() =>
+                        setForm((p) => ({ ...p, status: s.value }))
+                      }
                       className={[
                         "rounded-full px-4 py-2 text-[13px] font-medium border transition",
                         active
@@ -443,11 +403,12 @@ async function saveModuleEdit(moduleId) {
         </h2>
 
         <div className="mt-4 grid grid-cols-2 gap-y-3 text-[15px] text-[#4A4A4A]">
-          {/* description */}
           {isEditing ? (
             <textarea
               value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, description: e.target.value }))
+              }
               rows={4}
               className="col-span-2 w-full resize-none rounded-xl border border-[#E5E5EA] bg-[#FAFAFB] px-5 py-3 text-[15px] outline-none focus:border-[#8B5CF6]"
               placeholder="Write a short overview..."
@@ -456,22 +417,22 @@ async function saveModuleEdit(moduleId) {
             <p className="col-span-2">{course.description}</p>
           )}
 
-          {/* category */}
           <p>
             <span className="font-medium">Category:</span>{" "}
             {isEditing ? (
               <input
                 value={form.category}
-                onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, category: e.target.value }))
+                }
                 className="ml-2 rounded-lg border border-[#E5E5EA] bg-white px-3 py-2 text-[14px] outline-none focus:border-[#8B5CF6]"
                 placeholder="Ostomy Care"
               />
             ) : (
               course.category
-            )}  
+            )}
           </p>
 
-          {/* duration */}
           <p>
             <span className="font-medium">Duration:</span>{" "}
             {isEditing ? (
@@ -488,7 +449,6 @@ async function saveModuleEdit(moduleId) {
             )}
           </p>
 
-          {/* target audience */}
           <p>
             <span className="font-medium">Target Audience:</span>{" "}
             {isEditing ? (
@@ -510,12 +470,10 @@ async function saveModuleEdit(moduleId) {
       {/* ================= MODULES ================= */}
       <div className="mt-10 rounded-2xl bg-white px-8 py-6 shadow-[0_16px_32px_rgba(0,0,0,0.08)]">
         <div className="flex items-center justify-between">
-          <h2 className="text-[18px] font-semibold text-[#3A3A3A]">
-            Modules
-          </h2>
+          <h2 className="text-[18px] font-semibold text-[#3A3A3A]">Modules</h2>
 
           <button
-            onClick={() => setShowModuleModal(true)}
+            onClick={openAddModuleModal}
             className="flex items-center gap-2 rounded-xl bg-[#CFA3F1] px-5 py-3
                        text-[15px] font-medium text-[#1F1F1F] hover:opacity-95"
             type="button"
@@ -530,169 +488,146 @@ async function saveModuleEdit(moduleId) {
             No modules added yet. Start by adding your first module.
           </div>
         ) : (
-        <div className="mt-6 space-y-3">
-          {modules.map((m, idx) => {
-  const isEditingThis = editingModuleId === m.id;
+          <div className="mt-6 space-y-3">
+            {modules.map((m, idx) => (
+              <div
+                key={m.id}
+                className="flex items-center justify-between rounded-xl bg-[#F3F3F5] px-5 py-4"
+              >
+                <div className="flex-1">
+                  <p className="font-medium text-[#2E2E2E]">
+                    {idx + 1}. {m.title}
+                  </p>
 
-  return (
-    <div
-      key={m.id}
-      className="flex items-center justify-between rounded-xl bg-[#F3F3F5] px-5 py-4"
-    >
-      <div className="flex-1">
-        {isEditingThis ? (
-          <div className="flex flex-col gap-3">
-            <input
-              value={editModuleTitle}
-              onChange={(e) => setEditModuleTitle(e.target.value)}
-              className="w-full rounded-xl border border-[#E5E5EA] bg-white px-4 py-3 text-[14px] outline-none focus:border-[#8B5CF6]"
-              placeholder="Module title"
-            />
+                  <p className="text-[13px] text-[#6B6B6B]">
+                    {m.preview || "—"}
+                  </p>
 
-            <select
-              value={editModuleType}
-              onChange={(e) => setEditModuleType(e.target.value)}
-              className="w-full rounded-xl border border-[#E5E5EA] bg-white px-4 py-3 text-[14px] outline-none focus:border-[#8B5CF6]"
-            >
-              <option>Text</option>
-              <option>Video</option>
-              <option>PDF</option>
-            </select>
+                  {m.contentText && (
+                    <p className="mt-1 text-[13px] text-[#6B6B6B] line-clamp-2">
+                      {m.contentText}
+                    </p>
+                  )}
+                </div>
+
+                <div className="ml-4 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEditModuleModal(m)}
+                    className="rounded-full border border-[#DCDCE2] bg-white px-5 py-2 text-[13px] font-medium hover:bg-[#FAFAFB] transition"
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteModule(m.id)}
+                    className="rounded-full border border-red-200 bg-white px-5 py-2 text-[13px] font-medium text-red-600 hover:bg-red-50 transition"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ================= MODULE EDITOR MODAL (ADD + EDIT) ================= */}
+      {moduleModalOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40">
+          <div className="w-[820px] max-h-[85vh] overflow-y-auto rounded-2xl bg-white px-8 py-7">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-[20px] font-semibold text-[#3A3A3A]">
+                  {moduleModalMode === "add" ? "Add Module" : "Edit Module"}
+                </h3>
+                <p className="mt-1 text-[13px] text-[#6B6B6B]">
+                  Text-only module (for now). You can paste URLs inside content.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeModuleModal}
+                className="rounded-xl border border-[#E5E5EA] bg-white px-4 py-2 text-[14px] hover:bg-[#FAFAFB]"
+              >
+                Close
+              </button>
+            </div>
 
             {moduleError && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+              <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-[14px] text-red-700">
                 {moduleError}
               </div>
             )}
+
+            <div className="mt-6 space-y-5">
+              <div>
+                <label className="text-[14px] font-medium text-[#4A4A4A]">
+                  Module Title
+                </label>
+                <input
+                  value={moduleTitle}
+                  onChange={(e) => setModuleTitle(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-[#E5E5EA] bg-white px-4 py-3 text-[14px] outline-none focus:border-[#8B5CF6]"
+                  placeholder="e.g., Stoma Assessment"
+                />
+              </div>
+
+              <div>
+                <label className="text-[14px] font-medium text-[#4A4A4A]">
+                  Preview sentence (shown in module list)
+                </label>
+                <textarea
+                  value={modulePreview}
+                  onChange={(e) => setModulePreview(e.target.value)}
+                  rows={2}
+                  className="mt-2 w-full resize-none rounded-xl border border-[#E5E5EA] bg-white px-4 py-3 text-[14px] outline-none focus:border-[#8B5CF6]"
+                  placeholder="One short sentence explaining what this module covers..."
+                />
+              </div>
+
+              <div>
+                <label className="text-[14px] font-medium text-[#4A4A4A]">
+                  Module Content
+                </label>
+                <textarea
+                  value={moduleContent}
+                  onChange={(e) => setModuleContent(e.target.value)}
+                  rows={14}
+                  className="mt-2 w-full resize-none rounded-xl border border-[#E5E5EA] bg-[#FAFAFB] px-4 py-3 text-[14px] leading-relaxed outline-none focus:border-[#8B5CF6]"
+                  placeholder="Write the full lesson content here. You can include URLs in the text."
+                />
+                <p className="mt-2 text-[12px] text-[#7A7A7A]">
+                  Tip: Use blank lines between paragraphs for better readability
+                  on mobile.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-7 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeModuleModal}
+                disabled={moduleSaving}
+                className="rounded-xl border border-[#E5E5EA] bg-white px-5 py-3 text-[14px] hover:bg-[#FAFAFB] disabled:opacity-60"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={saveModule}
+                disabled={moduleSaving}
+                className="rounded-xl bg-[#8B5CF6] px-6 py-3 text-[14px] font-medium text-white hover:opacity-95 disabled:opacity-60"
+              >
+                {moduleSaving ? "Saving..." : "Save Module"}
+              </button>
+            </div>
           </div>
-        ) : (
-          <>
-            <p className="font-medium text-[#2E2E2E]">
-              {idx + 1}. {m.title}
-            </p>
-            <p className="text-[13px] text-[#6B6B6B]">{m.type}</p>
-          </>
-        )}
-      </div>
-
-      <div className="ml-4 flex gap-2">
-        {!isEditingThis ? (
-          <>
-            <button
-              type="button"
-              onClick={() => startEditModule(m)}
-              className="rounded-full border border-[#DCDCE2] bg-white px-5 py-2 text-[13px] font-medium hover:bg-[#FAFAFB] transition"
-            >
-              Edit
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleDeleteModule(m.id)}
-              className="rounded-full border border-red-200 bg-white px-5 py-2 text-[13px] font-medium text-red-600 hover:bg-red-50 transition"
-            >
-              Delete
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={cancelEditModule}
-              disabled={moduleSaving}
-              className="rounded-full border border-[#DCDCE2] bg-white px-5 py-2 text-[13px] font-medium hover:bg-[#FAFAFB] disabled:opacity-60 transition"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              onClick={() => saveModuleEdit(m.id)}
-              disabled={moduleSaving}
-              className="rounded-full bg-[#8B5CF6] px-5 py-2 text-[13px] font-medium text-white hover:opacity-95 disabled:opacity-60 transition"
-            >
-              {moduleSaving ? "Saving..." : "Save"}
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-})}
         </div>
       )}
-      </div>
-
-      {/* ================= ADD MODULE MODAL ================= */}
-{showModuleModal && (
-  <div className="fixed inset-0 z-50 grid place-items-center bg-black/40">
-    <div className="w-[520px] rounded-2xl bg-white px-6 py-6">
-      <h3 className="text-[18px] font-semibold text-[#3A3A3A]">
-        Add Module
-      </h3>
-
-      <div className="mt-5 space-y-4">
-        {moduleError && (
-          <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
-            {moduleError}
-          </div>
-        )}
-
-        <input
-          value={newModuleTitle}
-          onChange={(e) => setNewModuleTitle(e.target.value)}
-          placeholder="Module title"
-          className="w-full rounded-xl border border-[#E5E5EA] px-4 py-3"
-        />
-
-        <select
-          value={newModuleType}
-          onChange={(e) => setNewModuleType(e.target.value)}
-          className="w-full rounded-xl border border-[#E5E5EA] px-4 py-3"
-        >
-          <option>Text</option>
-          <option>Video</option>
-          <option>PDF</option>
-        </select>
-
-        {/* ✅ TEXTAREA GOES HERE */}
-        {newModuleType === "Text" && (
-          <textarea
-            value={newModuleContent}
-            onChange={(e) => setNewModuleContent(e.target.value)}
-            placeholder="Write module content here..."
-            rows={7}
-            className="w-full resize-none rounded-xl border border-[#E5E5EA] px-4 py-3"
-          />
-        )}
-      </div>
-
-      <div className="mt-6 flex justify-end gap-3">
-        <button
-          onClick={() => {
-            setShowModuleModal(false);
-            setModuleError("");
-            setNewModuleTitle("");
-            setNewModuleType("Text");
-            setNewModuleContent("");
-          }}
-          className="rounded-xl bg-white px-4 py-2 border"
-          type="button"
-        >
-          Cancel
-        </button>
-
-        <button
-          onClick={handleAddModule}
-          className="rounded-xl bg-[#8B5CF6] px-4 py-2 text-white"
-          type="button"
-        >
-          Save
-        </button>
-      </div>
-    </div>
-  </div>
-)}  
     </div>
   );
 }

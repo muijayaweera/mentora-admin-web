@@ -28,12 +28,10 @@ export async function addModule(courseId, module) {
   const ref = collection(db, "courses", courseId, "modules");
 
   const docRef = await addDoc(ref, {
-    title: module.title,
-    type: module.type,
-
-    // ✅ text content (optional)
+    title: module.title || "",
+    type: "Text", // ✅ Text-only for now
+    preview: module.preview || "",
     contentText: module.contentText || "",
-
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
