@@ -2,7 +2,16 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { fetchCourseById, updateCourse, deleteCourse } from "../../services/courses";
 import { Plus, Pencil, Trash2, CheckCircle, Save, X } from "lucide-react";
-import { fetchModules, addModule, deleteModule, updateModule } from "../../services/modules";
+import {
+  fetchModules,
+  addModule,
+  deleteModule,
+  updateModule,
+  fetchQuestions,
+  addQuestion,
+  updateQuestion,
+  deleteQuestion,
+} from "../../services/modules";
 
 export default function CourseDetail() {
   const { id } = useParams();
@@ -40,6 +49,21 @@ export default function CourseDetail() {
 
   const [moduleSaving, setModuleSaving] = useState(false);
   const [moduleError, setModuleError] = useState("");
+
+  const [moduleQuestions, setModuleQuestions] = useState([]);
+
+  const [questionText, setQuestionText] = useState("");
+  const [optionA, setOptionA] = useState("");
+  const [optionB, setOptionB] = useState("");
+  const [optionC, setOptionC] = useState("");
+  const [optionD, setOptionD] = useState("");
+  const [correctAnswerIndex, setCorrectAnswerIndex] = useState(0);
+  const [questionExplanation, setQuestionExplanation] = useState("");
+
+  const [questionMode, setQuestionMode] = useState("add");
+  const [activeQuestionId, setActiveQuestionId] = useState(null);
+  const [questionSaving, setQuestionSaving] = useState(false);
+  const [questionError, setQuestionError] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -167,69 +191,106 @@ export default function CourseDetail() {
 
   // ===== Module modal handlers =====
   function openAddModuleModal() {
-    setModuleError("");
-    setModuleModalMode("add");
-    setActiveModuleId(null);
-    setModuleTitle("");
-    setModulePreview("");
-    setModuleContent("");
-    setModuleModalOpen(true);
+  setModuleError("");
+  setQuestionError("");
+  setModuleModalMode("add");
+  setActiveModuleId(null);
+  setModuleTitle("");
+  setModulePreview("");
+  setModuleContent("");
+  setModuleQuestions([]);
+  resetQuestionForm();
+  setModuleModalOpen(true);
+}
+
+  async function openEditModuleModal(m) {
+  setModuleError("");
+  setQuestionError("");
+  setModuleModalMode("edit");
+  setActiveModuleId(m.id);
+  setModuleTitle(m.title || "");
+  setModulePreview(m.preview || "");
+  setModuleContent(m.contentText || "");
+  setModuleQuestions([]);
+
+  resetQuestionForm();
+
+  try {
+    const qs = await fetchQuestions(id, m.id);
+    setModuleQuestions(qs);
+  } catch (e) {
+    console.error(e);
+    setQuestionError("Failed to load questions.");
   }
 
-  function openEditModuleModal(m) {
-    setModuleError("");
-    setModuleModalMode("edit");
-    setActiveModuleId(m.id);
-    setModuleTitle(m.title || "");
-    setModulePreview(m.preview || "");
-    setModuleContent(m.contentText || "");
-    setModuleModalOpen(true);
-  }
+  setModuleModalOpen(true);
+}
 
   function closeModuleModal() {
     setModuleModalOpen(false);
     setModuleError("");
   }
 
-  async function saveModule() {
-    setModuleError("");
+async function saveModule() {
+  setModuleError("");
 
-    if (!moduleTitle.trim()) return setModuleError("Module title is required.");
-    if (!modulePreview.trim())
-      return setModuleError("Preview sentence is required.");
-    if (!moduleContent.trim()) return setModuleError("Content is required.");
+  if (!moduleTitle.trim()) return setModuleError("Module title is required.");
+  if (!modulePreview.trim()) {
+    return setModuleError("Preview sentence is required.");
+  }
+  if (!moduleContent.trim()) return setModuleError("Content is required.");
 
-    setModuleSaving(true);
-    try {
+  setModuleSaving(true);
+
+  try {
+    if (moduleModalMode === "add") {
+      const nextOrder = modules.length + 1;
+
       const payload = {
         title: moduleTitle.trim(),
         preview: modulePreview.trim(),
         contentText: moduleContent.trim(),
-        type: "Text", // ✅ Text-only
+        type: "Text",
+        order: modules.length + 1,
       };
 
-      if (moduleModalMode === "add") {
-        const newId = await addModule(id, payload);
+      const newId = await addModule(id, payload);
 
-        await updateCourse(id, { modulesCount: modules.length + 1 });
+      await updateCourse(id, { modulesCount: modules.length + 1 });
 
-        setModules((prev) => [...prev, { id: newId, ...payload }]);
-      } else {
-        await updateModule(id, activeModuleId, payload);
+      setModules((prev) =>
+        [...prev, { id: newId, ...payload }].sort(
+          (a, b) => (a.order ?? 0) - (b.order ?? 0)
+        )
+      );
+    } else {
+      const existingModule = modules.find((m) => m.id === activeModuleId);
 
-        setModules((prev) =>
-          prev.map((m) => (m.id === activeModuleId ? { ...m, ...payload } : m))
-        );
-      }
+      const payload = {
+        title: moduleTitle.trim(),
+        preview: modulePreview.trim(),
+        contentText: moduleContent.trim(),
+        type: "Text",
+        order: existingModule?.order ?? 0,
+      };
 
-      closeModuleModal();
-    } catch (e) {
-      console.error(e);
-      setModuleError(e?.message || "Failed to save module.");
-    } finally {
-      setModuleSaving(false);
+      await updateModule(id, activeModuleId, payload);
+
+      setModules((prev) =>
+        prev
+          .map((m) => (m.id === activeModuleId ? { ...m, ...payload } : m))
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      );
     }
+
+    closeModuleModal();
+  } catch (e) {
+    console.error(e);
+    setModuleError(e?.message || "Failed to save module.");
+  } finally {
+    setModuleSaving(false);
   }
+}
 
   async function handleDeleteModule(moduleId) {
     const ok = window.confirm("Delete this module? This cannot be undone.");
@@ -244,6 +305,121 @@ export default function CourseDetail() {
       setError("Failed to delete module.");
     }
   }
+
+  function resetQuestionForm() {
+  setQuestionMode("add");
+  setActiveQuestionId(null);
+  setQuestionText("");
+  setOptionA("");
+  setOptionB("");
+  setOptionC("");
+  setOptionD("");
+  setCorrectAnswerIndex(0);
+  setQuestionExplanation("");
+}
+
+function startEditQuestion(q) {
+  setQuestionError("");
+  setQuestionMode("edit");
+  setActiveQuestionId(q.id);
+  setQuestionText(q.questionText || "");
+  setOptionA(q.options?.[0] || "");
+  setOptionB(q.options?.[1] || "");
+  setOptionC(q.options?.[2] || "");
+  setOptionD(q.options?.[3] || "");
+  setCorrectAnswerIndex(q.correctAnswerIndex ?? 0);
+  setQuestionExplanation(q.explanation || "");
+}
+
+async function saveQuestion() {
+  setQuestionError("");
+
+  if (moduleModalMode === "add" || !activeModuleId) {
+    setQuestionError("Save the module first before adding questions.");
+    return;
+  }
+
+  if (!questionText.trim()) {
+    setQuestionError("Question text is required.");
+    return;
+  }
+
+  const options = [
+    optionA.trim(),
+    optionB.trim(),
+    optionC.trim(),
+    optionD.trim(),
+  ];
+
+  if (options.some((opt) => !opt)) {
+    setQuestionError("All 4 answer options are required.");
+    return;
+  }
+
+  setQuestionSaving(true);
+
+  try {
+    if (questionMode === "add") {
+      const payload = {
+        questionText: questionText.trim(),
+        options,
+        correctAnswerIndex: Number(correctAnswerIndex),
+        explanation: questionExplanation.trim(),
+        order: moduleQuestions.length + 1,
+      };
+
+      const newId = await addQuestion(id, activeModuleId, payload);
+
+      setModuleQuestions((prev) =>
+        [...prev, { id: newId, ...payload }].sort(
+          (a, b) => (a.order ?? 0) - (b.order ?? 0)
+        )
+      );
+    } else {
+      const existingQuestion = moduleQuestions.find(
+        (q) => q.id === activeQuestionId
+      );
+
+      const payload = {
+        questionText: questionText.trim(),
+        options,
+        correctAnswerIndex: Number(correctAnswerIndex),
+        explanation: questionExplanation.trim(),
+        order: existingQuestion?.order ?? 0,
+      };
+
+      await updateQuestion(id, activeModuleId, activeQuestionId, payload);
+
+      setModuleQuestions((prev) =>
+        prev
+          .map((q) =>
+            q.id === activeQuestionId ? { ...q, ...payload } : q
+          )
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      );
+    }
+
+    resetQuestionForm();
+  } catch (e) {
+    console.error(e);
+    setQuestionError(e?.message || "Failed to save question.");
+  } finally {
+    setQuestionSaving(false);
+  }
+}
+
+async function handleDeleteQuestion(questionId) {
+  const ok = window.confirm("Delete this question?");
+  if (!ok) return;
+
+  try {
+    await deleteQuestion(id, activeModuleId, questionId);
+    setModuleQuestions((prev) => prev.filter((q) => q.id !== questionId));
+  } catch (e) {
+    console.error(e);
+    setQuestionError("Failed to delete question.");
+  }
+}
 
   return (
     <div className="min-h-screen bg-[#F6F6F7] px-10 py-10 font-[Poppins]">
@@ -496,7 +672,7 @@ export default function CourseDetail() {
               >
                 <div className="flex-1">
                   <p className="font-medium text-[#2E2E2E]">
-                    {idx + 1}. {m.title}
+                    {(m.order ?? idx + 1)}. {m.title}
                   </p>
 
                   <p className="text-[13px] text-[#6B6B6B]">
@@ -604,6 +780,187 @@ export default function CourseDetail() {
                   on mobile.
                 </p>
               </div>
+              <div className="mt-8 border-t border-[#E5E5EA] pt-7">
+  <div className="flex items-center justify-between">
+    <div>
+      <h4 className="text-[18px] font-semibold text-[#3A3A3A]">
+        Quiz Questions
+      </h4>
+      <p className="mt-1 text-[13px] text-[#6B6B6B]">
+        Add MCQ questions for this module. These will appear in the mobile app after the lesson.
+      </p>
+    </div>
+
+    {questionMode === "edit" && (
+      <button
+        type="button"
+        onClick={resetQuestionForm}
+        className="rounded-xl border border-[#E5E5EA] bg-white px-4 py-2 text-[13px] hover:bg-[#FAFAFB]"
+      >
+        Cancel Edit
+      </button>
+    )}
+  </div>
+
+  {moduleModalMode === "add" && (
+    <div className="mt-5 rounded-xl border border-yellow-200 bg-yellow-50 px-5 py-4 text-[14px] text-yellow-700">
+      Save the module first. Then reopen it to add quiz questions.
+    </div>
+  )}
+
+  {questionError && (
+    <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-[14px] text-red-700">
+      {questionError}
+    </div>
+  )}
+
+  {moduleModalMode === "edit" && (
+    <>
+      <div className="mt-6 rounded-2xl border border-[#E5E5EA] bg-[#FAFAFB] p-5">
+        <label className="text-[14px] font-medium text-[#4A4A4A]">
+          Question
+        </label>
+        <textarea
+          value={questionText}
+          onChange={(e) => setQuestionText(e.target.value)}
+          rows={2}
+          className="mt-2 w-full resize-none rounded-xl border border-[#E5E5EA] bg-white px-4 py-3 text-[14px] outline-none focus:border-[#8B5CF6]"
+          placeholder="e.g., What is an ostomy?"
+        />
+
+        <div className="mt-5 grid grid-cols-2 gap-4">
+          {[optionA, optionB, optionC, optionD].map((value, index) => {
+            const setters = [
+              setOptionA,
+              setOptionB,
+              setOptionC,
+              setOptionD,
+            ];
+
+            return (
+              <div key={index}>
+                <label className="text-[13px] font-medium text-[#4A4A4A]">
+                  Option {index + 1}
+                </label>
+                <input
+                  value={value}
+                  onChange={(e) => setters[index](e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-[#E5E5EA] bg-white px-4 py-3 text-[14px] outline-none focus:border-[#8B5CF6]"
+                  placeholder={`Answer option ${index + 1}`}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-5">
+          <label className="text-[14px] font-medium text-[#4A4A4A]">
+            Correct Answer
+          </label>
+          <select
+            value={correctAnswerIndex}
+            onChange={(e) => setCorrectAnswerIndex(Number(e.target.value))}
+            className="mt-2 w-full rounded-xl border border-[#E5E5EA] bg-white px-4 py-3 text-[14px] outline-none focus:border-[#8B5CF6]"
+          >
+            <option value={0}>Option 1</option>
+            <option value={1}>Option 2</option>
+            <option value={2}>Option 3</option>
+            <option value={3}>Option 4</option>
+          </select>
+        </div>
+
+        <div className="mt-5">
+          <label className="text-[14px] font-medium text-[#4A4A4A]">
+            Explanation
+          </label>
+          <textarea
+            value={questionExplanation}
+            onChange={(e) => setQuestionExplanation(e.target.value)}
+            rows={2}
+            className="mt-2 w-full resize-none rounded-xl border border-[#E5E5EA] bg-white px-4 py-3 text-[14px] outline-none focus:border-[#8B5CF6]"
+            placeholder="Explain why the answer is correct..."
+          />
+        </div>
+
+        <div className="mt-5 flex justify-end">
+          <button
+            type="button"
+            onClick={saveQuestion}
+            disabled={questionSaving}
+            className="rounded-xl bg-[#8B5CF6] px-6 py-3 text-[14px] font-medium text-white hover:opacity-95 disabled:opacity-60"
+          >
+            {questionSaving
+              ? "Saving..."
+              : questionMode === "add"
+              ? "Add Question"
+              : "Update Question"}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        {moduleQuestions.length === 0 ? (
+          <div className="rounded-xl bg-[#F3F3F5] px-5 py-6 text-center text-[14px] text-[#6B6B6B]">
+            No quiz questions added yet.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {moduleQuestions.map((q, index) => (
+              <div
+                key={q.id}
+                className="rounded-xl bg-[#F3F3F5] px-5 py-4"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-medium text-[#2E2E2E]">
+                      {index + 1}. {q.questionText}
+                    </p>
+                    <p className="mt-1 text-[13px] text-[#6B6B6B]">
+                      Correct: Option {(q.correctAnswerIndex ?? 0) + 1}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => startEditQuestion(q)}
+                      className="rounded-full border border-[#DCDCE2] bg-white px-4 py-2 text-[13px] font-medium hover:bg-[#FAFAFB]"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteQuestion(q.id)}
+                      className="rounded-full border border-red-200 bg-white px-4 py-2 text-[13px] font-medium text-red-600 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {(q.options || []).map((opt, optIndex) => (
+                    <div
+                      key={optIndex}
+                      className={`rounded-lg px-3 py-2 text-[12px] ${
+                        optIndex === q.correctAnswerIndex
+                          ? "bg-green-100 text-green-700"
+                          : "bg-white text-[#6B6B6B]"
+                      }`}
+                    >
+                      {optIndex + 1}. {opt}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  )}
+</div>
             </div>
 
             <div className="mt-7 flex justify-end gap-3">
