@@ -23,12 +23,15 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="h-screen w-[290px] bg-gradient-to-b from-[#D393E8] to-[#CA9DF2] flex flex-col px-6 py-8">
+    <aside className="fixed left-0 top-0 h-screen w-[270px] bg-[#FBFAFF] border-r border-[#EEE7F8] flex flex-col px-6 py-8 z-40">
       {/* Logo */}
-      <div className="mb-10">
-        <h1 className="text-3xl font-semibold bg-gradient-to-r from-[#C613C1] to-[#902FED] bg-clip-text text-transparent">
+      <div className="mb-12">
+        <h1 className="text-[30px] leading-none font-semibold tracking-tight text-[#C026D3]">
           mentora.
         </h1>
+        <p className="text-[13px] text-gray-400 mt-2">
+          Admin Management
+        </p>
       </div>
 
       {/* Nav */}
@@ -40,42 +43,29 @@ export default function Sidebar() {
             end={path === "/"}
             className={({ isActive }) =>
               [
-                "no-underline relative flex items-center gap-4 px-5 py-3 rounded-xl text-[18px] font-medium transition",
+                "no-underline flex items-center gap-3 px-4 py-3 rounded-2xl text-[15px] font-medium transition-all duration-200",
                 isActive
-                  ? "bg-white/35 text-[#1F1F1F]"
-                  : "text-[#2E2E2E] hover:bg-white/25",
+                  ? "bg-white text-[#A21CAF] shadow-[0_10px_30px_rgba(168,85,247,0.10)] border border-[#F0E4FF]"
+                  : "text-gray-500 hover:text-[#A21CAF] hover:bg-white/70",
               ].join(" ")
             }
           >
-            {({ isActive }) => (
-              <>
-                {/* left indicator bar */}
-                <span
-                  className={[
-                    "absolute left-0 top-2 bottom-2 w-[4px] rounded-full bg-[#8B5CF6] transition-opacity",
-                    isActive ? "opacity-100" : "opacity-0",
-                  ].join(" ")}
-                />
-
-                <Icon size={22} className="opacity-80" />
-                <span className="tracking-wide">{name}</span>
-              </>
-            )}
+            <Icon size={19} strokeWidth={2} />
+            <span>{name}</span>
           </NavLink>
         ))}
       </nav>
 
-      {/* Spacer */}
-      <div className="flex-1" />
-
       {/* Logout */}
-      <button
-        onClick={handleLogout}
-        className="mt-6 flex items-center gap-3 px-4 py-3 rounded-xl text-[#2E2E2E] hover:bg-white/25 transition"
-      >
-        <LogOut size={20} className="opacity-80" />
-        <span className="text-[16px] font-medium">Log Out</span>
-      </button>
+      <div className="mt-auto pt-6 border-t border-[#EEE7F8]">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-500 hover:bg-white hover:text-red-500 transition-all duration-200"
+        >
+          <LogOut size={19} strokeWidth={2} />
+          <span className="text-[15px] font-medium">Log Out</span>
+        </button>
+      </div>
     </aside>
   );
 }

@@ -1,131 +1,213 @@
-import { Circle, Users, BookOpen, Image as ImageIcon, Clock } from "lucide-react";
+import {
+  Users,
+  BookOpen,
+  Image as ImageIcon,
+  Clock,
+  TrendingUp,
+  CheckCircle2,
+  AlertCircle,
+  Activity,
+} from "lucide-react";
 import { db } from "../firebase/firebase";
 
-function StatCard({ title, value, Icon }) {
+function StatCard({ title, value, Icon, note }) {
   return (
-    <div className="bg-white rounded-2xl px-6 py-5 border border-black/5 shadow-md">
-      <div className="flex items-start justify-between">
+    <div className="group bg-white rounded-[28px] px-6 py-5 border border-[#F0EAF7] shadow-[0_12px_35px_rgba(30,20,60,0.04)] hover:shadow-[0_16px_45px_rgba(30,20,60,0.08)] transition-all duration-300">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[15px] text-gray-400 mb-3">{title}</p>
-          <h3 className="text-2xl font-semibold text-[#1F1F1F]">{value}</h3>
+          <p className="text-[14px] font-medium text-gray-400 mb-2">{title}</p>
+          <h3 className="text-[26px] font-semibold text-gray-950 leading-none">
+            {value}
+          </h3>
+          <p className="text-[12px] text-gray-400 mt-4">{note}</p>
         </div>
-        <Icon size={22} className="text-black/60 mt-1" />
+
+        <div className="h-11 w-11 rounded-2xl bg-[#F7EAFE] flex items-center justify-center">
+          <Icon size={21} strokeWidth={2} className="text-[#B72AD7]" />
+        </div>
       </div>
     </div>
   );
 }
 
-function Card({ title, right, children }) {
+function Card({ title, subtitle, right, children }) {
   return (
-    <div className="bg-white rounded-2xl p-6 border border-black/5 shadow-md">
-      <div className="flex items-center justify-between mb-5">
-        <p className="text-[16px] font-semibold text-black/40">{title}</p>
+    <div className="bg-white rounded-[30px] p-6 border border-[#F0EAF7] shadow-[0_12px_35px_rgba(30,20,60,0.04)]">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+        <div>
+          <h3 className="text-[19px] font-semibold text-gray-950">{title}</h3>
+          {subtitle && <p className="text-[14px] text-gray-400 mt-1">{subtitle}</p>}
+        </div>
         {right}
       </div>
+
       {children}
+    </div>
+  );
+}
+
+function MiniMetric({ label, value, icon: Icon, tone = "purple" }) {
+  const styles = {
+    purple: "bg-[#F7EAFE] text-[#B72AD7]",
+    green: "bg-green-50 text-green-600",
+    orange: "bg-orange-50 text-orange-600",
+  };
+
+  return (
+    <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] p-4">
+      <div className="flex items-center gap-3">
+        <div className={`h-10 w-10 rounded-2xl flex items-center justify-center ${styles[tone]}`}>
+          <Icon size={18} strokeWidth={2.1} />
+        </div>
+        <div>
+          <p className="text-[14px] text-gray-400">{label}</p>
+          <p className="text-[18px] font-semibold text-gray-950">{value}</p>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function Dashboard() {
   const cards = [
-    { title: "Total Users", value: "102 Users", icon: Users },
-    { title: "Total Courses", value: "6 Courses", icon: BookOpen },
-    { title: "Total Images", value: "212 Images", icon: ImageIcon },
-    { title: "Pending Reviews", value: "17 Pending", icon: Clock },
+    { title: "Total Users", value: "13", icon: Users, note: "Registered nurses" },
+    { title: "Total Courses", value: "5", icon: BookOpen, note: "Published learning courses" },
+    { title: "Total Images", value: "32", icon: ImageIcon, note: "Uploaded for recognition" },
+    { title: "Pending Reviews", value: "8", icon: Clock, note: "Awaiting admin review" },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header (top-right) */}
-      <div className="flex items-center justify-end gap-3">
-        <Circle className="text-[#8B5CF6]" size={34} />
-        <h2 className="text-4xl font-semibold text-[#1F1F1F]">
-          Admin Dashboard
-        </h2>
-      </div>
-
-      {/* 12-col grid wrapper */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* Row 1: 4 summary cards (each 3 cols) */}
-        {cards.map((c) => (
-          <div key={c.title} className="col-span-12 sm:col-span-6 lg:col-span-3">
-            <StatCard title={c.title} value={c.value} Icon={c.icon} />
+    <div className="min-h-screen bg-[#FAF9FF] px-8 py-8">
+      <div className="space-y-7">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+          <div>
+            <h1 className="text-[36px] sm:text-[42px] font-semibold text-gray-950 tracking-tight leading-tight">
+              Admin Dashboard
+            </h1>
+            <p className="text-[15px] text-gray-400 mt-2">
+              Welcome back. Here’s an overview of Mentora’s learning activity.
+            </p>
           </div>
-        ))}
 
-        {/* Row 2: Image status (7 cols) + User activity (5 cols) */}
-        <div className="col-span-12 lg:col-span-7">
-          <Card
-            title="Image Recognition Status"
-            right={
-              <span className="text-green-600 font-medium text-[15px]">
-                Last Model Update: Jan 2026
+          <div className="bg-white rounded-[24px] border border-[#F0EAF7] px-5 py-4 shadow-[0_12px_35px_rgba(30,20,60,0.04)]">
+            <p className="text-[13px] text-gray-400">System Status</p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+              <span className="text-[15px] font-semibold text-gray-950">
+                All services active
               </span>
-            }
-          >
-            <div className="grid grid-cols-2 gap-6 text-[15px]">
-              <p className="text-black/70 leading-relaxed">
-                Reviewed Images:{" "}
-                <span className="font-semibold text-black">325</span>
-              </p>
-              <p className="text-black/70 leading-relaxed">
-                Pending Review:{" "}
-                <span className="font-semibold text-black">17</span>
-              </p>
             </div>
-          </Card>
+          </div>
         </div>
 
-        <div className="col-span-12 lg:col-span-5">
-          <Card title="User Activity">
-            <div className="grid grid-cols-2 gap-8 text-[15px]">
-              <p className="text-black/70 leading-relaxed">
-                New users this month:{" "}
-                <span className="font-semibold text-black">14</span>
-              </p>
-              <p className="text-black/70 leading-relaxed">
-                Active Users:{" "}
-                <span className="font-semibold text-black">03</span>
-              </p>
-            </div>
-          </Card>
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+          {cards.map((c) => (
+            <StatCard
+              key={c.title}
+              title={c.title}
+              value={c.value}
+              Icon={c.icon}
+              note={c.note}
+            />
+          ))}
         </div>
 
-        {/* Row 3: One wide course activity card (full width) */}
-        <div className="col-span-12">
-          <Card
-            title="Course Activity Overview"
-            right={
-              <span className="text-[15px]">
-                <span className="text-green-600 font-semibold">
-                  Latest Course Update:
-                </span>{" "}
-                <span className="text-gray-400 font-medium">02 Days Ago</span>
-              </span>
-            }
-          >
-            {/* Align items to a clean 12-col rhythm */}
-            <div className="grid grid-cols-12 items-center gap-4 text-[15px]">
-              <div className="col-span-12 md:col-span-3 text-black/70">
-                Total courses:{" "}
-                <span className="font-semibold text-black">08</span>
-              </div>
-
-              <div className="col-span-12 md:col-span-3 text-black/70">
-                Total modules:{" "}
-                <span className="font-semibold text-black">15</span>
-              </div>
-
-              <div className="col-span-12 md:col-span-6 flex items-center justify-between text-black/70">
-                <span>Ostomy Care Basics</span>
-                <span className="text-black/25 mx-4">|</span>
-                <span>
-                  <span className="font-semibold text-black">04</span> Modules
+        {/* Main Cards */}
+        <div className="grid grid-cols-12 gap-5">
+          <div className="col-span-12 lg:col-span-7">
+            <Card
+              title="Image Recognition Status"
+              subtitle="Current review progress for uploaded ostomy images"
+              right={
+                <span className="rounded-full bg-green-50 text-green-700 px-4 py-2 text-[13px] font-semibold">
+                  Last update: Jan 2026
                 </span>
+              }
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <MiniMetric
+                  label="Reviewed Images"
+                  value="325"
+                  icon={CheckCircle2}
+                  tone="green"
+                />
+                <MiniMetric
+                  label="Pending Review"
+                  value="17"
+                  icon={AlertCircle}
+                  tone="orange"
+                />
               </div>
-            </div>
-          </Card>
+
+              <div className="mt-6">
+                <div className="flex justify-between text-[14px] mb-2">
+                  <span className="text-gray-500">Review Completion</span>
+                  <span className="font-semibold text-gray-950">95%</span>
+                </div>
+                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full w-[95%] rounded-full bg-gradient-to-r from-[#D946EF] to-[#A855F7]" />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <div className="col-span-12 lg:col-span-5">
+            <Card title="User Activity" subtitle="Recent user engagement summary">
+              <div className="grid grid-cols-1 gap-4">
+                <MiniMetric
+                  label="New users this month"
+                  value="14"
+                  icon={TrendingUp}
+                  tone="purple"
+                />
+                <MiniMetric
+                  label="Active Users"
+                  value="03"
+                  icon={Activity}
+                  tone="green"
+                />
+              </div>
+            </Card>
+          </div>
+
+          <div className="col-span-12">
+            <Card
+              title="Course Activity Overview"
+              subtitle="Latest course and module activity"
+              right={
+                <span className="rounded-full bg-[#F7EAFE] text-[#B72AD7] px-4 py-2 text-[13px] font-semibold">
+                  Updated 02 days ago
+                </span>
+              }
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <MiniMetric
+                  label="Total Courses"
+                  value="08"
+                  icon={BookOpen}
+                  tone="purple"
+                />
+                <MiniMetric
+                  label="Total Modules"
+                  value="15"
+                  icon={CheckCircle2}
+                  tone="green"
+                />
+
+                <div className="rounded-[24px] bg-gradient-to-br from-[#D946EF] to-[#9333EA] p-5 text-white shadow-[0_16px_35px_rgba(168,85,247,0.18)]">
+                  <p className="text-[14px] text-white/75">Latest Course</p>
+                  <h4 className="font-semibold text-[19px] mt-1">
+                    Ostomy Care Basics
+                  </h4>
+                  <p className="text-[14px] text-white/80 mt-3">
+                    04 modules currently available
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

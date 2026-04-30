@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Send } from "lucide-react";
+import { Search, Plus, BookOpen, Eye, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { fetchCourses } from "../services/courses";
 
@@ -36,115 +36,165 @@ export default function Courses() {
     });
   }, [search, courses]);
 
+  const formatStatus = (status) => {
+    if (!status) return "Draft";
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const getStatusStyle = (status) => {
+    const value = (status || "draft").toLowerCase();
+
+    if (value === "published") {
+      return "bg-green-50 text-green-700 border-green-100";
+    }
+
+    if (value === "draft") {
+      return "bg-[#F7EAFE] text-[#B72AD7] border-[#F0D8FA]";
+    }
+
+    return "bg-gray-50 text-gray-600 border-gray-100";
+  };
+
   return (
-    <div className="min-h-screen w-full bg-[#F6F6F7] px-10 py-10 font-[Poppins]">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <div className="h-10 w-10 rounded-full border-[5px] border-[#8B5CF6] bg-white" />
-        <h1 className="text-[40px] font-semibold text-[#3A3A3A]">
-          Manage Courses
-        </h1>
-      </div>
+    <div className="min-h-screen bg-[#FAF9FF] px-8 py-8 font-[Poppins]">
+      <div className="space-y-7">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+          <div>
+            <h1 className="text-[36px] sm:text-[42px] font-semibold text-gray-950 tracking-tight leading-tight">
+              Manage Courses
+            </h1>
+            <p className="text-[15px] text-gray-400 mt-2">
+              Create, review, and manage learning content for Mentora nurses.
+            </p>
+          </div>
 
-      {/* Top actions */}
-      <div className="mt-10 flex items-center justify-between">
-        <button
-          className="rounded-xl bg-[#CFA3F1] px-8 py-3 text-[18px] font-medium text-[#1F1F1F]
-                     shadow-[0_8px_18px_rgba(139,92,246,0.18)] hover:opacity-95 transition"
-          onClick={() => navigate("/courses/new")}
-        >
-          + Add Course
-        </button>
-
-        {/* Search */}
-        <div className="relative w-[520px]">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search"
-            className="w-full rounded-full border border-[#E5E5EA] bg-white px-6 py-3 pr-16
-                       text-[16px] outline-none placeholder:text-[#A0A0A6]
-                       shadow-[0_10px_25px_rgba(0,0,0,0.06)]"
-          />
           <button
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-11 w-11 rounded-full
-                       bg-[#8B5CF6] grid place-items-center shadow-[0_10px_20px_rgba(139,92,246,0.25)]
-                       hover:opacity-95 transition"
-            onClick={() => console.log("Search submit:", search)}
-            aria-label="Search"
+            onClick={() => navigate("/courses/new")}
             type="button"
+            className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-gradient-to-r from-[#D946EF] to-[#9333EA] px-6 py-3.5 text-[15px] font-semibold text-white shadow-[0_16px_35px_rgba(168,85,247,0.20)] hover:opacity-95 transition"
           >
-            <Send size={18} className="text-white" />
+            <Plus size={18} strokeWidth={2.2} />
+            Add Course
           </button>
         </div>
-      </div>
 
-      {/* Table Card */}
-      <div
-        className="mt-10 w-full rounded-2xl bg-white px-10 py-8
-                   shadow-[0_18px_40px_rgba(0,0,0,0.08)]"
-      >
-        {/* Table header */}
-        <div className="grid grid-cols-[120px_1fr_120px_140px_160px_120px] items-center text-[16px] font-semibold text-[#5A5A5A]">
-          <div>Code</div>
-          <div>Course Title</div>
-          <div>Modules</div>
-          <div>Status</div>
-          <div>Last Update</div>
-          <div></div>
-        </div>
-
-        <div className="mt-5 space-y-4">
-          {loading && (
-            <div className="rounded-xl bg-[#F3F3F5] px-6 py-10 text-center text-[#6B6B6B]">
-              Loading courses...
-            </div>
-          )}
-
-          {!loading &&
-            filtered.map((c) => (
-              <div
-                key={c.id}
-                className="grid grid-cols-[120px_1fr_120px_140px_160px_120px] items-center
-                           rounded-xl bg-[#F3F3F5] px-6 py-4 text-[16px] text-[#2E2E2E]"
-              >
-                <div className="font-medium">{c.code || "-"}</div>
-                <div className="font-medium">{c.title || "-"}</div>
-                <div className="font-medium">{c.modulesCount ?? 0}</div>
-                <div className="font-medium">
-                  {c.status
-                    ? c.status.charAt(0).toUpperCase() + c.status.slice(1)
-                    : "Draft"}
-                </div>
-                <div className="font-medium">
-                  {/* simple placeholder until we format timestamps */}
-                  —
-                </div>
-
-                <div className="flex justify-end">
-                  <button
-                    className="rounded-full border border-[#DCDCE2] bg-white px-8 py-2
-                               text-[14px] font-medium text-[#2E2E2E]
-                               shadow-[0_10px_18px_rgba(0,0,0,0.06)]
-                               hover:bg-[#FAFAFB] transition"
-                    onClick={() => navigate(`/courses/${c.id}`)}
-                    type="button"
-                  >
-                    View
-                  </button>
-                </div>
+        {/* Toolbar */}
+        <div className="bg-white rounded-[28px] border border-[#F0EAF7] shadow-[0_12px_35px_rgba(30,20,60,0.04)] p-5">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-2xl bg-[#F7EAFE] flex items-center justify-center">
+                <BookOpen size={20} className="text-[#B72AD7]" />
               </div>
-            ))}
-
-          {!loading && filtered.length === 0 && (
-            <div className="rounded-xl bg-[#F3F3F5] px-6 py-10 text-center text-[#6B6B6B]">
-              No courses found.
+              <div>
+                <p className="text-[15px] font-semibold text-gray-950">
+                  Course Library
+                </p>
+                <p className="text-[13px] text-gray-400">
+                  {filtered.length} course{filtered.length === 1 ? "" : "s"} found
+                </p>
+              </div>
             </div>
-          )}
+
+            <div className="relative w-full lg:w-[430px]">
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search courses, codes, or status"
+                className="w-full rounded-[18px] border border-[#F0EAF7] bg-[#FCFBFE] py-3 pl-11 pr-4 text-[14px] text-gray-700 outline-none placeholder:text-gray-400 focus:border-[#E9C8F7] focus:bg-white transition"
+              />
+            </div>
+          </div>
         </div>
 
-        {/* bottom space (like the design empty area) */}
-        <div className="h-[260px]" />
+        {/* Course Table */}
+        <div className="bg-white rounded-[30px] border border-[#F0EAF7] shadow-[0_12px_35px_rgba(30,20,60,0.04)] overflow-hidden">
+          <div className="grid grid-cols-[120px_1fr_120px_150px_150px_110px] items-center px-10 py-4 border-b border-[#F3EEF8] text-[13px] font-semibold text-gray-400">
+            <div>Code</div>
+            <div>Course Title</div>
+            <div>Modules</div>
+            <div>Status</div>
+            <div>Last Update</div>
+            <div className="text-right">Action</div>
+          </div>
+
+          <div className="px-4 py-4 space-y-3">
+            {loading && (
+              <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-12 text-center">
+                <Loader2 className="mx-auto mb-3 animate-spin text-[#B72AD7]" size={26} />
+                <p className="text-[15px] font-medium text-gray-500">
+                  Loading courses...
+                </p>
+              </div>
+            )}
+
+            {!loading &&
+              filtered.map((c) => (
+                <div
+                  key={c.id}
+                  className="grid grid-cols-[120px_1fr_120px_150px_150px_110px] items-center rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-4 text-[14px] text-gray-700 hover:bg-white hover:shadow-[0_12px_30px_rgba(30,20,60,0.05)] transition-all duration-200"
+                >
+                  <div className="font-semibold text-gray-800">
+                    {c.code || "-"}
+                  </div>
+
+                  <div>
+                    <p className="font-semibold text-gray-950">
+                      {c.title || "-"}
+                    </p>
+                    <p className="text-[12px] text-gray-400 mt-1">
+                      Mentora learning course
+                    </p>
+                  </div>
+
+                  <div className="font-semibold text-gray-800">
+                    {c.modulesCount ?? 0}
+                  </div>
+
+                  <div>
+                    <span
+                      className={`inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-semibold ${getStatusStyle(
+                        c.status
+                      )}`}
+                    >
+                      {formatStatus(c.status)}
+                    </span>
+                  </div>
+
+                  <div className="font-medium text-gray-400">—</div>
+
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => navigate(`/courses/${c.id}`)}
+                      type="button"
+                      className="inline-flex items-center gap-2 rounded-full border border-[#F0EAF7] bg-white px-4 py-2 text-[13px] font-semibold text-gray-600 hover:border-[#E9C8F7] hover:text-[#B72AD7] hover:bg-[#FFF9FF] transition"
+                    >
+                      <Eye size={15} />
+                      View
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+            {!loading && filtered.length === 0 && (
+              <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-14 text-center">
+                <div className="mx-auto mb-4 h-12 w-12 rounded-2xl bg-[#F7EAFE] flex items-center justify-center">
+                  <Search size={22} className="text-[#B72AD7]" />
+                </div>
+                <p className="text-[16px] font-semibold text-gray-800">
+                  No courses found
+                </p>
+                <p className="text-[14px] text-gray-400 mt-1">
+                  Try searching with another course title, code, or status.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
