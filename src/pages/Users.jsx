@@ -1,55 +1,87 @@
-import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Search,
+  Users as UsersIcon,
+  UserCheck,
+  UserX,
+  Shield,
+  Loader2,
+} from "lucide-react";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query as firestoreQuery,
+  updateDoc,
+} from "firebase/firestore";
+import { db } from "../firebase/firebase"; // adjust if your firebase file path is different
 
-const DUMMY_USERS = [
-  {
-    id: "U-1021",
-    email: "nurse1021@mentora.app",
-    name: "Dilani Perera",
-    role: "Nurse",
-    status: "Active",
-    registeredOn: "Jan 18, 2026",
-  },
-  {
-    id: "U-0884",
-    email: "nurse0884@mentora.app",
-    name: "Sewmi Jayasinghe",
-    role: "Nurse",
-    status: "Active",
-    registeredOn: "Dec 29, 2025",
-  },
-  {
-    id: "U-0640",
-    email: "nurse0640@mentora.app",
-    name: "Nethmi Fernando",
-    role: "Nurse",
-    status: "Disabled",
-    registeredOn: "Dec 12, 2025",
-  },
-  {
-    id: "A-0001",
-    email: "admin@mentora.app",
-    name: "Mentora Admin",
-    role: "Admin",
-    status: "Active",
-    registeredOn: "Nov 10, 2025",
-  },
-];
+function formatDate(value) {
+  if (!value) return "Not available";
+
+  if (value?.toDate) {
+    return value.toDate().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+
+  if (typeof value === "string") return value;
+
+  return "Not available";
+}
 
 function statusPillClasses(status) {
   return status === "Active"
-    ? "bg-green-100 text-green-700"
-    : "bg-red-100 text-red-700";
+    ? "bg-green-50 text-green-700 border-green-100"
+    : "bg-red-50 text-red-600 border-red-100";
 }
 
-function Toggle({ checked, onChange }) {
+function rolePillClasses(role) {
+  return role === "admin" || role === "Admin"
+    ? "bg-[#F7EAFE] text-[#B72AD7] border-[#F0D8FA]"
+    : "bg-blue-50 text-blue-700 border-blue-100";
+}
+
+function StatCard({ label, value, icon: Icon, tone = "purple" }) {
+  const styles = {
+    purple: "bg-[#F7EAFE] text-[#B72AD7]",
+    green: "bg-green-50 text-green-600",
+    red: "bg-red-50 text-red-600",
+  };
+
+  return (
+    <div className="bg-white rounded-[28px] px-5 py-5 border border-[#F0EAF7] shadow-[0_12px_35px_rgba(30,20,60,0.04)]">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[13px] text-gray-400">{label}</p>
+          <p className="mt-1 text-[25px] font-semibold text-gray-950">
+            {value}
+          </p>
+        </div>
+
+        <div
+          className={`h-11 w-11 rounded-2xl flex items-center justify-center ${styles[tone]}`}
+        >
+          <Icon size={20} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Toggle({ checked, onChange, disabled }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={() => onChange(!checked)}
       className={[
         "relative inline-flex h-7 w-12 items-center rounded-full transition",
-        checked ? "bg-[#8B5CF6]" : "bg-[#D7D7DD]",
+        checked ? "bg-[#B72AD7]" : "bg-gray-300",
+        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
       ].join(" ")}
       aria-pressed={checked}
       aria-label="Toggle active status"
@@ -65,12 +97,50 @@ function Toggle({ checked, onChange }) {
 }
 
 export default function Users() {
-  const [users, setUsers] = useState(DUMMY_USERS);
+  const [users, setUsers] = useState([]);
   const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [updatingUserId, setUpdatingUserId] = useState(null);
+
+  useEffect(() => {
+    const usersRef = collection(db, "users");
+    const q = firestoreQuery(usersRef, orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const userList = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+
+          const isDisabled = data.disabled === true || data.status === "Disabled";
+
+          return {
+            id: docSnap.id,
+            email: data.email || "No email",
+            name: data.name || data.displayName || "Unnamed User",
+            role: data.role || "nurse",
+            status: isDisabled ? "Disabled" : "Active",
+            registeredOn: formatDate(data.createdAt || data.registeredOn),
+          };
+        });
+
+        setUsers(userList);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error loading users:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+
     if (!q) return users;
+
     return users.filter(
       (u) =>
         u.id.toLowerCase().includes(q) ||
@@ -84,139 +154,190 @@ export default function Users() {
   const stats = useMemo(() => {
     const total = users.length;
     const active = users.filter((u) => u.status === "Active").length;
-    return { total, active };
+    const disabled = users.filter((u) => u.status === "Disabled").length;
+
+    return { total, active, disabled };
   }, [users]);
 
-  function toggleUserStatus(userId, nextActive) {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId
-          ? { ...u, status: nextActive ? "Active" : "Disabled" }
-          : u
-      )
-    );
+  async function toggleUserStatus(userId, nextActive) {
+    try {
+      setUpdatingUserId(userId);
+
+      await updateDoc(doc(db, "users", userId), {
+        disabled: !nextActive,
+        status: nextActive ? "Active" : "Disabled",
+      });
+    } catch (error) {
+      console.error("Error updating user status:", error);
+      alert("Could not update user status. Please try again.");
+    } finally {
+      setUpdatingUserId(null);
+    }
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#F6F6F7] px-10 py-10 font-[Poppins]">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-4">
-          <div className="h-10 w-10 rounded-full border-[5px] border-[#8B5CF6] bg-white" />
-          <div>
-            <h1 className="text-[40px] font-semibold text-[#3A3A3A]">
-              Mentora Users
-            </h1>
+    <div className="min-h-screen bg-[#FAF9FF] px-8 py-8 font-[Poppins]">
+      <div className="space-y-7">
+        <div>
+          <h1 className="text-[36px] sm:text-[42px] font-semibold text-gray-950 tracking-tight leading-tight">
+            Mentora Users
+          </h1>
+          <p className="text-[15px] text-gray-400 mt-2">
+            Manage registered nurses and admin access for the Mentora platform.
+          </p>
+        </div>
 
-            {/* subtle stats */}
-            <div className="mt-4 grid grid-cols-2 gap-4 max-w-[420px]">
-              {[
-                { label: "Total Users", value: stats.total },
-                { label: "Active Users", value: stats.active },
-              ].map((s) => (
-                <div
-                  key={s.label}
-                  className="rounded-xl bg-white px-5 py-4
-                            shadow-[0_12px_24px_rgba(0,0,0,0.06)]"
-                >
-                  <p className="text-[12px] text-[#7A7A7A]">{s.label}</p>
-                  <p className="mt-1 text-[20px] font-semibold text-[#3A3A3A]">
-                    {s.value}
-                  </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <StatCard label="Total Users" value={stats.total} icon={UsersIcon} />
+          <StatCard
+            label="Active Users"
+            value={stats.active}
+            icon={UserCheck}
+            tone="green"
+          />
+          <StatCard
+            label="Disabled Users"
+            value={stats.disabled}
+            icon={UserX}
+            tone="red"
+          />
+        </div>
+
+        <div className="bg-white rounded-[30px] border border-[#F0EAF7] shadow-[0_12px_35px_rgba(30,20,60,0.04)] overflow-hidden">
+          <div className="p-5 border-b border-[#F3EEF8]">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-2xl bg-[#F7EAFE] flex items-center justify-center">
+                  <Shield size={20} className="text-[#B72AD7]" />
                 </div>
-              ))}
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      {/* Main Table Card */}
-      <div
-        className="mt-10 w-full rounded-2xl bg-white px-10 py-8
-                   shadow-[0_18px_40px_rgba(0,0,0,0.08)]"
-      >
-        {/* Search */}
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-[18px] font-semibold text-[#3A3A3A]">
-            Users List
-          </h2>
-
-          <div className="relative w-[520px] max-w-full">
-            <div className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[#8B8B92]">
-              <Search size={18} />
-            </div>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by ID, email, name..."
-              className="w-full rounded-full border border-[#E5E5EA] bg-white pl-12 pr-6 py-3
-                         text-[15px] outline-none placeholder:text-[#A0A0A6]
-                         shadow-[0_10px_25px_rgba(0,0,0,0.06)]"
-            />
-          </div>
-        </div>
-
-        {/* Table header */}
-        <div className="mt-7 grid grid-cols-[170px_220px_170px_120px_160px_140px] items-center text-[14px] font-semibold text-[#5A5A5A]">
-          <div>User ID / Email</div>
-          <div>Name</div>
-          <div>Role</div>
-          <div>Status</div>
-          <div>Registered On</div>
-          <div>Activate/Deactivate</div>
-        </div>
-
-        {/* Rows */}
-        <div className="mt-5 space-y-4">
-          {filtered.map((u) => {
-            const isActive = u.status === "Active";
-            return (
-              <div
-                key={u.id}
-                className="grid grid-cols-[170px_220px_170px_120px_160px_100px] items-center
-                           rounded-xl bg-[#F3F3F5] px-5 py-4 text-[15px] text-[#2E2E2E]"
-              >
-                <div className="font-medium leading-tight">
-                  <div className="text-[14px]">{u.id}</div>
-                  <div className="text-[12px] text-[#6F6F76]">{u.email}</div>
-                </div>
-
-                <div className="font-medium">{u.name}</div>
-                <div className="font-medium">{u.role}</div>
 
                 <div>
-                  <span
-                    className={`inline-flex rounded-full px-4 py-1 text-[13px] font-medium ${statusPillClasses(
-                      u.status
-                    )}`}
-                  >
-                    {u.status}
-                  </span>
-                </div>
-
-                <div className="font-medium text-[#4A4A4A]">{u.registeredOn}</div>
-
-                <div className="flex justify-end">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[12px] text-[#6F6F76]">
-                      {isActive ? "Deactivate" : "Activate"}
-                    </span>
-                    <Toggle
-                      checked={isActive}
-                      onChange={(next) => toggleUserStatus(u.id, next)}
-                    />
-                  </div>
+                  <h2 className="text-[19px] font-semibold text-gray-950">
+                    Users List
+                  </h2>
+                  <p className="text-[13px] text-gray-400">
+                    {filtered.length} user{filtered.length === 1 ? "" : "s"} found
+                  </p>
                 </div>
               </div>
-            );
-          })}
 
-          {filtered.length === 0 && (
-            <div className="rounded-xl bg-[#F3F3F5] px-6 py-10 text-center text-[#6B6B6B]">
-              No users found.
+              <div className="relative w-full lg:w-[430px]">
+                <Search
+                  size={18}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by ID, email, name..."
+                  className="w-full rounded-[18px] border border-[#F0EAF7] bg-[#FCFBFE] py-3 pl-11 pr-4 text-[14px] text-gray-700 outline-none placeholder:text-gray-400 focus:border-[#E9C8F7] focus:bg-white transition"
+                />
+              </div>
             </div>
-          )}
+          </div>
+
+          <div className="overflow-x-auto">
+            <div className="min-w-[1030px]">
+              <div className="grid grid-cols-[230px_200px_130px_130px_160px_180px] items-center px-6 py-4 text-[13px] font-semibold text-gray-400 border-b border-[#F3EEF8]">
+                <div>User Email</div>
+                <div>Name</div>
+                <div>Role</div>
+                <div>Status</div>
+                <div>Registered On</div>
+                <div className="text-right">Access Control</div>
+              </div>
+
+              <div className="p-4 space-y-3">
+                {loading && (
+                  <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-14 text-center">
+                    <Loader2
+                      size={28}
+                      className="mx-auto mb-3 text-[#B72AD7] animate-spin"
+                    />
+                    <p className="text-[15px] font-semibold text-gray-700">
+                      Loading users...
+                    </p>
+                  </div>
+                )}
+
+                {!loading &&
+                  filtered.map((u) => {
+                    const isActive = u.status === "Active";
+                    const isUpdating = updatingUserId === u.id;
+
+                    return (
+                      <div
+                        key={u.id}
+                        className="grid grid-cols-[230px_200px_130px_130px_160px_180px] items-center rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-4 text-[14px] text-gray-700 hover:bg-white hover:shadow-[0_12px_30px_rgba(30,20,60,0.05)] transition-all duration-200"
+                      >
+                       <div className="leading-tight">
+                          <p className="font-semibold text-gray-950 truncate">
+                            {u.name}
+                          </p>
+                        </div>
+
+                        <div className="text-gray-500 truncate">
+                          {u.email}
+                        </div>
+
+                        <div>
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-[12px] font-semibold capitalize ${rolePillClasses(
+                              u.role
+                            )}`}
+                          >
+                            {u.role}
+                          </span>
+                        </div>
+
+                        <div>
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-[12px] font-semibold ${statusPillClasses(
+                              u.status
+                            )}`}
+                          >
+                            {u.status}
+                          </span>
+                        </div>
+
+                        <div className="font-medium text-gray-400">
+                          {u.registeredOn}
+                        </div>
+
+                        <div className="flex justify-end">
+                          <div className="flex items-center gap-3">
+                            <span className="text-[12px] font-medium text-gray-400">
+                              {isActive ? "Deactivate" : "Activate"}
+                            </span>
+
+                            <Toggle
+                              checked={isActive}
+                              disabled={isUpdating}
+                              onChange={(next) => toggleUserStatus(u.id, next)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {!loading && filtered.length === 0 && (
+                  <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-14 text-center">
+                    <div className="mx-auto mb-4 h-12 w-12 rounded-2xl bg-[#F7EAFE] flex items-center justify-center">
+                      <Search size={22} className="text-[#B72AD7]" />
+                    </div>
+
+                    <p className="text-[16px] font-semibold text-gray-800">
+                      No users found
+                    </p>
+                    <p className="text-[14px] text-gray-400 mt-1">
+                      Try searching with another ID, name, email, role, or status.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

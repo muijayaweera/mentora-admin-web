@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   Filter,
@@ -9,57 +9,18 @@ import {
   CheckCircle2,
   XCircle,
   Brain,
+  Loader2,
 } from "lucide-react";
-
-const DUMMY_IMAGES = [
-  {
-    id: "IMG001",
-    thumbUrl:
-      "https://images.unsplash.com/photo-1526256262350-7da7584cf5eb?auto=format&fit=crop&w=200&q=60",
-    uploadedBy: "Nurse #1021",
-    prediction: "Healthy Stoma",
-    confidence: 82,
-    status: "Pending Review",
-    uploadedOn: "Feb 4, 2026",
-    notes: "Clear visibility, centered frame.",
-  },
-  {
-    id: "IMG002",
-    thumbUrl:
-      "https://images.unsplash.com/photo-1580281657527-47f249e8f67b?auto=format&fit=crop&w=200&q=60",
-    uploadedBy: "Nurse #0884",
-    prediction: "Skin Irritation",
-    confidence: 74,
-    status: "Reviewed",
-    uploadedOn: "Feb 2, 2026",
-    notes: "Redness around peristomal region.",
-    adminLabel: "Skin Irritation",
-  },
-  {
-    id: "IMG003",
-    thumbUrl:
-      "https://images.unsplash.com/photo-1582719478148-bb2b7b14d245?auto=format&fit=crop&w=200&q=60",
-    uploadedBy: "Nurse #1105",
-    prediction: "Leakage",
-    confidence: 68,
-    status: "Approved for Retraining",
-    uploadedOn: "Jan 30, 2026",
-    notes: "Possible leakage around barrier ring.",
-    adminLabel: "Leakage",
-  },
-  {
-    id: "IMG004",
-    thumbUrl:
-      "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=200&q=60",
-    uploadedBy: "Nurse #0640",
-    prediction: "Infection",
-    confidence: 61,
-    status: "Rejected",
-    uploadedOn: "Jan 29, 2026",
-    notes: "Low lighting / blurry capture.",
-    adminLabel: "Other",
-  },
-];
+import {
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query as firestoreQuery,
+  serverTimestamp,
+  updateDoc,
+} from "firebase/firestore";
+import { db } from "../firebase/firebase";
 
 const STATUS_FILTERS = [
   "All",
@@ -76,6 +37,22 @@ const LABEL_OPTIONS = [
   "Skin Irritation",
   "Other",
 ];
+
+function formatDate(value) {
+  if (!value) return "Not available";
+
+  if (value?.toDate) {
+    return value.toDate().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+
+  if (typeof value === "string") return value;
+
+  return "Not available";
+}
 
 function statusPillClasses(status) {
   switch (status) {
@@ -108,7 +85,9 @@ function StatCard({ label, value, icon: Icon, tone = "purple" }) {
           </p>
         </div>
 
-        <div className={`h-11 w-11 rounded-2xl flex items-center justify-center ${styles[tone]}`}>
+        <div
+          className={`h-11 w-11 rounded-2xl flex items-center justify-center ${styles[tone]}`}
+        >
           <Icon size={20} />
         </div>
       </div>
@@ -119,15 +98,53 @@ function StatCard({ label, value, icon: Icon, tone = "purple" }) {
 export default function ImageReview() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [query, setQuery] = useState("");
-  const [images, setImages] = useState(DUMMY_IMAGES);
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [openReviewId, setOpenReviewId] = useState(null);
+  const [label, setLabel] = useState("Healthy Stoma");
+
   const active = useMemo(
     () => images.find((img) => img.id === openReviewId) || null,
     [images, openReviewId]
   );
 
-  const [label, setLabel] = useState("Healthy Stoma");
+  useEffect(() => {
+    const reviewsRef = collection(db, "imageReviews");
+    const q = firestoreQuery(reviewsRef, orderBy("uploadedOn", "desc"));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const reviewList = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+
+          return {
+            id: docSnap.id,
+            thumbUrl: data.imageUrl || data.thumbUrl || "",
+            uploadedBy:
+              data.uploadedBy || data.uploadedByEmail || "Unknown user",
+            prediction: data.prediction || "Unknown",
+            confidence: data.confidence || 0,
+            status: data.status || "Pending Review",
+            uploadedOn: formatDate(data.uploadedOn || data.createdAt),
+            notes: data.notes || "No notes added.",
+            adminLabel: data.adminLabel || "",
+          };
+        });
+
+        setImages(reviewList);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error loading image reviews:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -167,35 +184,38 @@ export default function ImageReview() {
     setOpenReviewId(null);
   }
 
-  function saveReview(nextStatus) {
+  async function saveReview(nextStatus) {
     if (!active) return;
 
-    setImages((prev) =>
-      prev.map((img) =>
-        img.id === active.id
-          ? {
-              ...img,
-              adminLabel: label,
-              status: nextStatus || "Reviewed",
-            }
-          : img
-      )
-    );
+    try {
+      setSaving(true);
 
-    closeReview();
+      await updateDoc(doc(db, "imageReviews", active.id), {
+        adminLabel: label,
+        status: nextStatus || "Reviewed",
+        reviewedAt: serverTimestamp(),
+      });
+
+      closeReview();
+    } catch (error) {
+      console.error("Error saving review:", error);
+      alert("Could not save review. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <div className="min-h-screen bg-[#FAF9FF] px-8 py-8 font-[Poppins]">
       <div className="space-y-7">
-        {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
           <div>
             <h1 className="text-[36px] sm:text-[42px] font-semibold text-gray-950 tracking-tight leading-tight">
               Image Review
             </h1>
             <p className="text-[15px] text-gray-400 mt-2">
-              Review AI predictions and approve useful images for model retraining.
+              Review AI predictions and approve useful images for model
+              retraining.
             </p>
           </div>
 
@@ -224,7 +244,6 @@ export default function ImageReview() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
           <StatCard
             label="Total Images"
@@ -252,7 +271,6 @@ export default function ImageReview() {
           />
         </div>
 
-        {/* Main Card */}
         <div className="bg-white rounded-[30px] border border-[#F0EAF7] shadow-[0_12px_35px_rgba(30,20,60,0.04)] overflow-hidden">
           <div className="p-5 border-b border-[#F3EEF8]">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -265,7 +283,8 @@ export default function ImageReview() {
                     Submitted Images
                   </h2>
                   <p className="text-[13px] text-gray-400">
-                    {filtered.length} image{filtered.length === 1 ? "" : "s"} found
+                    {filtered.length} image
+                    {filtered.length === 1 ? "" : "s"} found
                   </p>
                 </div>
               </div>
@@ -285,87 +304,114 @@ export default function ImageReview() {
             </div>
           </div>
 
-          {/* Table Header */}
-          <div className="grid grid-cols-[90px_150px_180px_120px_180px_140px_110px] items-center px-6 py-4 text-[13px] font-semibold text-gray-400 border-b border-[#F3EEF8]">
-            <div>Image</div>
-            <div>Uploaded By</div>
-            <div>Model Prediction</div>
-            <div>Confidence</div>
-            <div>Status</div>
-            <div>Uploaded On</div>
-            <div className="text-right">Action</div>
-          </div>
-
-          {/* Rows */}
-          <div className="p-4 space-y-3">
-            {filtered.map((img) => (
-              <div
-                key={img.id}
-                className="grid grid-cols-[90px_150px_180px_120px_180px_140px_110px] items-center rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-4 text-[14px] text-gray-700 hover:bg-white hover:shadow-[0_12px_30px_rgba(30,20,60,0.05)] transition-all duration-200"
-              >
-                <div>
-                  <img
-                    src={img.thumbUrl}
-                    alt={img.id}
-                    className="h-13 w-13 rounded-2xl object-cover border border-white shadow-sm"
-                  />
-                </div>
-
-                <div className="font-semibold text-gray-800">{img.uploadedBy}</div>
-
-                <div>
-                  <p className="font-semibold text-gray-950">{img.prediction}</p>
-                  <p className="text-[12px] text-gray-400 mt-1">{img.id}</p>
-                </div>
-
-                <div className="font-semibold text-gray-800">
-                  {img.confidence}%
-                </div>
-
-                <div>
-                  <span
-                    className={`inline-flex rounded-full border px-3 py-1 text-[12px] font-semibold ${statusPillClasses(
-                      img.status
-                    )}`}
-                  >
-                    {img.status}
-                  </span>
-                </div>
-
-                <div className="font-medium text-gray-400">{img.uploadedOn}</div>
-
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => openReview(img)}
-                    className="rounded-full border border-[#F0EAF7] bg-white px-4 py-2 text-[13px] font-semibold text-gray-600 hover:border-[#E9C8F7] hover:text-[#B72AD7] hover:bg-[#FFF9FF] transition"
-                  >
-                    Review
-                  </button>
-                </div>
+          <div className="overflow-x-auto">
+            <div className="min-w-[980px]">
+              <div className="grid grid-cols-[90px_150px_180px_120px_180px_140px_110px] items-center px-6 py-4 text-[13px] font-semibold text-gray-400 border-b border-[#F3EEF8]">
+                <div>Image</div>
+                <div>Uploaded By</div>
+                <div>Model Prediction</div>
+                <div>Confidence</div>
+                <div>Status</div>
+                <div>Uploaded On</div>
+                <div className="text-right">Action</div>
               </div>
-            ))}
 
-            {filtered.length === 0 && (
-              <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-14 text-center">
-                <div className="mx-auto mb-4 h-12 w-12 rounded-2xl bg-[#F7EAFE] flex items-center justify-center">
-                  <Search size={22} className="text-[#B72AD7]" />
-                </div>
-                <p className="text-[16px] font-semibold text-gray-800">
-                  No images found
-                </p>
-                <p className="text-[14px] text-gray-400 mt-1">
-                  Try changing the filter or search keyword.
-                </p>
+              <div className="p-4 space-y-3">
+                {loading && (
+                  <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-14 text-center">
+                    <Loader2
+                      size={28}
+                      className="mx-auto mb-3 text-[#B72AD7] animate-spin"
+                    />
+                    <p className="text-[15px] font-semibold text-gray-700">
+                      Loading image reviews...
+                    </p>
+                  </div>
+                )}
+
+                {!loading &&
+                  filtered.map((img) => (
+                    <div
+                      key={img.id}
+                      className="grid grid-cols-[90px_150px_180px_120px_180px_140px_110px] items-center rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-4 text-[14px] text-gray-700 hover:bg-white hover:shadow-[0_12px_30px_rgba(30,20,60,0.05)] transition-all duration-200"
+                    >
+                      <div>
+                        {img.thumbUrl ? (
+                          <img
+                            src={img.thumbUrl}
+                            alt={img.id}
+                            className="h-13 w-13 rounded-2xl object-cover border border-white shadow-sm"
+                          />
+                        ) : (
+                          <div className="h-13 w-13 rounded-2xl bg-[#F7EAFE] flex items-center justify-center">
+                            <ImageIcon size={20} className="text-[#B72AD7]" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="font-semibold text-gray-800 truncate">
+                        {img.uploadedBy}
+                      </div>
+
+                      <div>
+                        <p className="font-semibold text-gray-950 truncate">
+                          {img.prediction}
+                        </p>
+                        <p className="text-[12px] text-gray-400 mt-1 truncate">
+                          {img.id}
+                        </p>
+                      </div>
+
+                      <div className="font-semibold text-gray-800">
+                        {img.confidence}%
+                      </div>
+
+                      <div>
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 text-[12px] font-semibold ${statusPillClasses(
+                            img.status
+                          )}`}
+                        >
+                          {img.status}
+                        </span>
+                      </div>
+
+                      <div className="font-medium text-gray-400">
+                        {img.uploadedOn}
+                      </div>
+
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => openReview(img)}
+                          className="rounded-full border border-[#F0EAF7] bg-white px-4 py-2 text-[13px] font-semibold text-gray-600 hover:border-[#E9C8F7] hover:text-[#B72AD7] hover:bg-[#FFF9FF] transition"
+                        >
+                          Review
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                {!loading && filtered.length === 0 && (
+                  <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-14 text-center">
+                    <div className="mx-auto mb-4 h-12 w-12 rounded-2xl bg-[#F7EAFE] flex items-center justify-center">
+                      <Search size={22} className="text-[#B72AD7]" />
+                    </div>
+                    <p className="text-[16px] font-semibold text-gray-800">
+                      No images found
+                    </p>
+                    <p className="text-[14px] text-gray-400 mt-1">
+                      Try changing the filter or search keyword.
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 
-        {/* Review Modal */}
         {active && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 px-4 backdrop-blur-sm">
             <div className="w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-[32px] bg-white border border-[#F0EAF7] shadow-[0_30px_80px_rgba(30,20,60,0.18)]">
-              {/* Modal Header */}
               <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-[#F3EEF8] px-7 py-5">
                 <div className="flex items-start justify-between gap-5">
                   <div>
@@ -382,7 +428,7 @@ export default function ImageReview() {
 
                   <button
                     onClick={closeReview}
-                    className="h-10 w-10 rounded-full border border-[#F0EAF7] bg-white text-gray-400 hover:text-gray-900 hover:bg-[#FCFBFE] transition"
+                    className="h-10 w-10 rounded-full border border-[#F0EAF7] bg-white text-gray-400 hover:text-gray-900 hover:bg-[#FCFBFE] transition flex items-center justify-center"
                     aria-label="Close"
                     type="button"
                   >
@@ -391,10 +437,8 @@ export default function ImageReview() {
                 </div>
               </div>
 
-              {/* Modal Body */}
               <div className="max-h-[calc(90vh-92px)] overflow-y-auto px-7 py-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Image Preview */}
                   <div className="rounded-[28px] bg-[#FCFBFE] border border-[#F2EDF8] p-5">
                     <div className="flex items-center justify-between">
                       <div>
@@ -415,11 +459,20 @@ export default function ImageReview() {
                     </div>
 
                     <div className="mt-5 overflow-hidden rounded-[26px] border border-[#F2EDF8] bg-white">
-                      <img
-                        src={active.thumbUrl}
-                        alt={active.id}
-                        className="w-full h-[380px] object-cover"
-                      />
+                      {active.thumbUrl ? (
+                        <img
+                          src={active.thumbUrl}
+                          alt={active.id}
+                          className="w-full h-[380px] object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-[380px] flex flex-col items-center justify-center bg-[#F7EAFE] text-[#B72AD7]">
+                          <ImageIcon size={42} />
+                          <p className="mt-3 text-[14px] font-semibold">
+                            No image available
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <p className="mt-4 text-[14px] text-gray-500 leading-relaxed">
@@ -427,7 +480,6 @@ export default function ImageReview() {
                     </p>
                   </div>
 
-                  {/* Review Panel */}
                   <div className="space-y-5">
                     <div className="rounded-[28px] bg-white border border-[#F2EDF8] p-5">
                       <h4 className="text-[18px] font-semibold text-gray-950">
@@ -448,7 +500,9 @@ export default function ImageReview() {
                         </div>
 
                         <div className="rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] p-4">
-                          <p className="text-[13px] text-gray-400">Confidence</p>
+                          <p className="text-[13px] text-gray-400">
+                            Confidence
+                          </p>
                           <p className="mt-1 text-[17px] font-semibold text-gray-950">
                             {active.confidence}%
                           </p>
@@ -457,7 +511,9 @@ export default function ImageReview() {
 
                       <div className="mt-5">
                         <div className="flex justify-between text-[13px] mb-2">
-                          <span className="text-gray-400">Confidence Score</span>
+                          <span className="text-gray-400">
+                            Confidence Score
+                          </span>
                           <span className="font-semibold text-gray-950">
                             {active.confidence}%
                           </span>
@@ -508,27 +564,30 @@ export default function ImageReview() {
 
                       <div className="mt-5 grid grid-cols-1 gap-3">
                         <button
+                          disabled={saving}
                           onClick={() => saveReview("Approved for Retraining")}
-                          className="rounded-[18px] bg-gradient-to-r from-[#D946EF] to-[#9333EA] px-5 py-3.5 text-[14px] font-semibold text-white shadow-[0_16px_35px_rgba(168,85,247,0.20)] hover:opacity-95 transition"
+                          className="rounded-[18px] bg-gradient-to-r from-[#D946EF] to-[#9333EA] px-5 py-3.5 text-[14px] font-semibold text-white shadow-[0_16px_35px_rgba(168,85,247,0.20)] hover:opacity-95 transition disabled:opacity-60 disabled:cursor-not-allowed"
                           type="button"
                         >
-                          Approve for Retraining
+                          {saving ? "Saving..." : "Approve for Retraining"}
                         </button>
 
                         <button
+                          disabled={saving}
                           onClick={() => saveReview("Reviewed")}
-                          className="rounded-[18px] bg-[#F7EAFE] px-5 py-3.5 text-[14px] font-semibold text-[#B72AD7] hover:bg-[#F2DDFB] transition"
+                          className="rounded-[18px] bg-[#F7EAFE] px-5 py-3.5 text-[14px] font-semibold text-[#B72AD7] hover:bg-[#F2DDFB] transition disabled:opacity-60 disabled:cursor-not-allowed"
                           type="button"
                         >
-                          Save Review
+                          {saving ? "Saving..." : "Save Review"}
                         </button>
 
                         <button
+                          disabled={saving}
                           onClick={() => saveReview("Rejected")}
-                          className="rounded-[18px] bg-white px-5 py-3.5 text-[14px] font-semibold text-red-600 border border-red-100 hover:bg-red-50 transition"
+                          className="rounded-[18px] bg-white px-5 py-3.5 text-[14px] font-semibold text-red-600 border border-red-100 hover:bg-red-50 transition disabled:opacity-60 disabled:cursor-not-allowed"
                           type="button"
                         >
-                          Reject Image
+                          {saving ? "Saving..." : "Reject Image"}
                         </button>
                       </div>
                     </div>
