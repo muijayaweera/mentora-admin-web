@@ -10,6 +10,7 @@ import {
   XCircle,
   Brain,
   Loader2,
+  Eye,
 } from "lucide-react";
 import {
   collection,
@@ -32,6 +33,7 @@ const STATUS_FILTERS = [
 
 const LABEL_OPTIONS = [
   "Healthy Stoma",
+  "Ischemic",
   "Infection",
   "Leakage",
   "Skin Irritation",
@@ -52,6 +54,11 @@ function formatDate(value) {
   if (typeof value === "string") return value;
 
   return "Not available";
+}
+
+function shortText(value, count = 18) {
+  if (!value) return "Unknown";
+  return value.length > count ? `${value.slice(0, count)}...` : value;
 }
 
 function statusPillClasses(status) {
@@ -103,6 +110,7 @@ export default function ImageReview() {
   const [saving, setSaving] = useState(false);
 
   const [openReviewId, setOpenReviewId] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
   const [label, setLabel] = useState("Healthy Stoma");
 
   const active = useMemo(
@@ -124,7 +132,9 @@ export default function ImageReview() {
             id: docSnap.id,
             thumbUrl: data.imageUrl || data.thumbUrl || "",
             uploadedBy:
-              data.uploadedBy || data.uploadedByEmail || "Unknown user",
+                data.uploadedByName || data.uploadedBy || data.uploadedByEmail || "Unknown user",
+              uploadedByEmail:
+                data.uploadedBy || data.uploadedByEmail || "",
             prediction: data.prediction || "Unknown",
             confidence: data.confidence || 0,
             status: data.status || "Pending Review",
@@ -305,12 +315,12 @@ export default function ImageReview() {
           </div>
 
           <div className="overflow-x-auto">
-            <div className="min-w-[980px]">
-              <div className="grid grid-cols-[90px_150px_180px_120px_180px_140px_110px] items-center px-6 py-4 text-[13px] font-semibold text-gray-400 border-b border-[#F3EEF8]">
+            <div className="min-w-[1120px]">
+              <div className="grid grid-cols-[100px_230px_210px_130px_190px_150px_120px] items-center px-7 py-4 text-[13px] font-semibold text-gray-400 border-b border-[#F3EEF8]">
                 <div>Image</div>
                 <div>Uploaded By</div>
                 <div>Model Prediction</div>
-                <div>Confidence</div>
+                <div className="text-center">Confidence</div>
                 <div>Status</div>
                 <div>Uploaded On</div>
                 <div className="text-right">Action</div>
@@ -333,42 +343,64 @@ export default function ImageReview() {
                   filtered.map((img) => (
                     <div
                       key={img.id}
-                      className="grid grid-cols-[90px_150px_180px_120px_180px_140px_110px] items-center rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-4 text-[14px] text-gray-700 hover:bg-white hover:shadow-[0_12px_30px_rgba(30,20,60,0.05)] transition-all duration-200"
+                      className="grid grid-cols-[100px_230px_210px_130px_190px_150px_120px] items-center rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-7 py-4 text-[14px] text-gray-700 hover:bg-white hover:shadow-[0_12px_30px_rgba(30,20,60,0.05)] transition-all duration-200"
                     >
                       <div>
                         {img.thumbUrl ? (
-                          <img
-                            src={img.thumbUrl}
-                            alt={img.id}
-                            className="h-13 w-13 rounded-2xl object-cover border border-white shadow-sm"
-                          />
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImage(img)}
+                            className="group relative h-16 w-16 overflow-hidden rounded-2xl border border-white shadow-sm"
+                          >
+                            <img
+                              src={img.thumbUrl}
+                              alt={img.id}
+                              className="h-full w-full object-cover transition duration-200 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 hidden items-center justify-center bg-black/35 text-white group-hover:flex">
+                              <Eye size={18} />
+                            </div>
+                          </button>
                         ) : (
-                          <div className="h-13 w-13 rounded-2xl bg-[#F7EAFE] flex items-center justify-center">
+                          <div className="h-16 w-16 rounded-2xl bg-[#F7EAFE] flex items-center justify-center">
                             <ImageIcon size={20} className="text-[#B72AD7]" />
                           </div>
                         )}
                       </div>
 
-                      <div className="font-semibold text-gray-800 truncate">
-                        {img.uploadedBy}
-                      </div>
+                      <div className="min-w-0">
+                        <p
+                          className="font-semibold text-gray-900 truncate"
+                          title={img.uploadedBy}
+                        >
+                          {shortText(img.uploadedBy, 24)}
+                        </p>
+                        <p
+                          className="text-[12px] text-gray-400 mt-1 truncate"
+                          title={img.uploadedByEmail || img.id}
+                        >
+                          {img.uploadedByEmail || img.id}
+                        </p>
+                                              </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-semibold text-gray-950 truncate">
                           {img.prediction}
                         </p>
-                        <p className="text-[12px] text-gray-400 mt-1 truncate">
-                          {img.id}
+                        <p className="text-[12px] text-gray-400 mt-1">
+                          AI generated result
                         </p>
                       </div>
 
-                      <div className="font-semibold text-gray-800">
-                        {img.confidence}%
+                      <div className="text-center">
+                        <span className="inline-flex min-w-[62px] justify-center rounded-full bg-[#F7EAFE] px-3 py-1.5 text-[13px] font-semibold text-[#B72AD7]">
+                          {img.confidence}%
+                        </span>
                       </div>
 
                       <div>
                         <span
-                          className={`inline-flex rounded-full border px-3 py-1 text-[12px] font-semibold ${statusPillClasses(
+                          className={`inline-flex rounded-full border px-3 py-1.5 text-[12px] font-semibold ${statusPillClasses(
                             img.status
                           )}`}
                         >
@@ -383,7 +415,7 @@ export default function ImageReview() {
                       <div className="flex justify-end">
                         <button
                           onClick={() => openReview(img)}
-                          className="rounded-full border border-[#F0EAF7] bg-white px-4 py-2 text-[13px] font-semibold text-gray-600 hover:border-[#E9C8F7] hover:text-[#B72AD7] hover:bg-[#FFF9FF] transition"
+                          className="rounded-full border border-[#F0EAF7] bg-white px-5 py-2.5 text-[13px] font-semibold text-gray-600 hover:border-[#E9C8F7] hover:text-[#B72AD7] hover:bg-[#FFF9FF] transition"
                         >
                           Review
                         </button>
@@ -419,7 +451,7 @@ export default function ImageReview() {
                       Image Review
                     </p>
                     <h3 className="text-[24px] font-semibold text-gray-950 mt-1">
-                      Review Image — {active.id}
+                      Review Image
                     </h3>
                     <p className="text-[14px] text-gray-400 mt-1">
                       Uploaded by {active.uploadedBy} • {active.uploadedOn}
@@ -440,13 +472,13 @@ export default function ImageReview() {
               <div className="max-h-[calc(90vh-92px)] overflow-y-auto px-7 py-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="rounded-[28px] bg-[#FCFBFE] border border-[#F2EDF8] p-5">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-4">
                       <div>
                         <h4 className="text-[18px] font-semibold text-gray-950">
                           Image Preview
                         </h4>
                         <p className="text-[13px] text-gray-400 mt-1">
-                          Submitted image for model review.
+                          Click the image to view it larger.
                         </p>
                       </div>
                       <span
@@ -458,12 +490,16 @@ export default function ImageReview() {
                       </span>
                     </div>
 
-                    <div className="mt-5 overflow-hidden rounded-[26px] border border-[#F2EDF8] bg-white">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImage(active)}
+                      className="mt-5 w-full overflow-hidden rounded-[26px] border border-[#F2EDF8] bg-white group"
+                    >
                       {active.thumbUrl ? (
                         <img
                           src={active.thumbUrl}
                           alt={active.id}
-                          className="w-full h-[380px] object-cover"
+                          className="w-full h-[380px] object-cover transition duration-200 group-hover:scale-[1.02]"
                         />
                       ) : (
                         <div className="w-full h-[380px] flex flex-col items-center justify-center bg-[#F7EAFE] text-[#B72AD7]">
@@ -473,7 +509,7 @@ export default function ImageReview() {
                           </p>
                         </div>
                       )}
-                    </div>
+                    </button>
 
                     <p className="mt-4 text-[14px] text-gray-500 leading-relaxed">
                       {active.notes}
@@ -604,6 +640,54 @@ export default function ImageReview() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {previewImage && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-950/70 px-5 backdrop-blur-sm">
+            <div className="relative w-full max-w-4xl rounded-[30px] bg-white p-4 shadow-[0_30px_90px_rgba(0,0,0,0.35)]">
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="absolute -right-3 -top-3 h-10 w-10 rounded-full bg-white border border-[#F0EAF7] flex items-center justify-center text-gray-500 hover:text-gray-950 transition"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="mb-4 flex items-center justify-between gap-4 px-1">
+                <div>
+                  <p className="text-[13px] font-semibold text-[#B72AD7]">
+                    Larger Preview
+                  </p>
+                  <p className="text-[15px] font-semibold text-gray-950">
+                    {previewImage.prediction} • {previewImage.confidence}%
+                  </p>
+                </div>
+
+                <span
+                  className={`inline-flex rounded-full border px-3 py-1.5 text-[12px] font-semibold ${statusPillClasses(
+                    previewImage.status
+                  )}`}
+                >
+                  {previewImage.status}
+                </span>
+              </div>
+
+              {previewImage.thumbUrl ? (
+                <img
+                  src={previewImage.thumbUrl}
+                  alt={previewImage.id}
+                  className="max-h-[72vh] w-full rounded-[24px] object-contain bg-[#FCFBFE]"
+                />
+              ) : (
+                <div className="h-[60vh] rounded-[24px] bg-[#F7EAFE] flex flex-col items-center justify-center text-[#B72AD7]">
+                  <ImageIcon size={46} />
+                  <p className="mt-3 text-[14px] font-semibold">
+                    No image available
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
