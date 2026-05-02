@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import {
   Users,
   BookOpen,
@@ -7,7 +8,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Activity,
+  Loader2,
 } from "lucide-react";
+import {
+  collection,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+} from "firebase/firestore";
 import { db } from "../firebase/firebase";
 
 function StatCard({ title, value, Icon, note }) {
@@ -36,7 +45,9 @@ function Card({ title, subtitle, right, children }) {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
         <div>
           <h3 className="text-[19px] font-semibold text-gray-950">{title}</h3>
-          {subtitle && <p className="text-[14px] text-gray-400 mt-1">{subtitle}</p>}
+          {subtitle && (
+            <p className="text-[14px] text-gray-400 mt-1">{subtitle}</p>
+          )}
         </div>
         {right}
       </div>
@@ -56,7 +67,9 @@ function MiniMetric({ label, value, icon: Icon, tone = "purple" }) {
   return (
     <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] p-4">
       <div className="flex items-center gap-3">
-        <div className={`h-10 w-10 rounded-2xl flex items-center justify-center ${styles[tone]}`}>
+        <div
+          className={`h-10 w-10 rounded-2xl flex items-center justify-center ${styles[tone]}`}
+        >
           <Icon size={18} strokeWidth={2.1} />
         </div>
         <div>
@@ -68,25 +81,147 @@ function MiniMetric({ label, value, icon: Icon, tone = "purple" }) {
   );
 }
 
+function formatDateTime(value) {
+  if (!value?.toDate) return "Just now";
+
+  return value.toDate().toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export default function Dashboard() {
+  const [usersData, setUsersData] = useState([]);
+  const [coursesData, setCoursesData] = useState([]);
+  const [imageReviews, setImageReviews] = useState([]);
+  const [moduleCount, setModuleCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubUsers = onSnapshot(collection(db, "users"), (snapshot) => {
+      setUsersData(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+
+    const unsubImages = onSnapshot(
+      query(collection(db, "imageReviews"), orderBy("uploadedOn", "desc")),
+      (snapshot) => {
+        setImageReviews(
+          snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        );
+        setLoading(false);
+      }
+    );
+
+    const unsubCourses = onSnapshot(collection(db, "courses"), async (snapshot) => {
+      const courses = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setCoursesData(courses);
+
+      let totalModules = 0;
+
+      for (const course of courses) {
+        const modulesSnap = await getDocs(
+          collection(db, "courses", course.id, "modules")
+        );
+        totalModules += modulesSnap.size;
+      }
+
+      setModuleCount(totalModules);
+    });
+
+    return () => {
+      unsubUsers();
+      unsubImages();
+      unsubCourses();
+    };
+  }, []);
+
+  const stats = useMemo(() => {
+    const totalUsers = usersData.length;
+    const activeUsers = usersData.filter(
+      (u) => u.disabled !== true && u.status !== "Disabled"
+    ).length;
+
+    const totalCourses = coursesData.length;
+    const publishedCourses = coursesData.filter(
+      (c) => c.status === "published" || c.isPublished === true
+    ).length;
+
+    const totalImages = imageReviews.length;
+    const pendingImages = imageReviews.filter(
+      (img) => img.status === "Pending Review"
+    ).length;
+    const reviewedImages = imageReviews.filter(
+      (img) =>
+        img.status === "Reviewed" ||
+        img.status === "Approved for Retraining" ||
+        img.status === "Rejected"
+    ).length;
+    const approvedImages = imageReviews.filter(
+      (img) => img.status === "Approved for Retraining"
+    ).length;
+
+    const completion =
+      totalImages === 0 ? 0 : Math.round((reviewedImages / totalImages) * 100);
+
+    const latestCourse = coursesData[0];
+
+    return {
+      totalUsers,
+      activeUsers,
+      totalCourses,
+      publishedCourses,
+      totalImages,
+      pendingImages,
+      reviewedImages,
+      approvedImages,
+      completion,
+      latestCourse,
+    };
+  }, [usersData, coursesData, imageReviews]);
+
   const cards = [
-    { title: "Total Users", value: "13", icon: Users, note: "Registered nurses" },
-    { title: "Total Courses", value: "5", icon: BookOpen, note: "Published learning courses" },
-    { title: "Total Images", value: "32", icon: ImageIcon, note: "Uploaded for recognition" },
-    { title: "Pending Reviews", value: "8", icon: Clock, note: "Awaiting admin review" },
+    {
+      title: "Total Users",
+      value: loading ? "..." : stats.totalUsers,
+      icon: Users,
+      note: "Registered platform users",
+    },
+    {
+      title: "Total Courses",
+      value: loading ? "..." : stats.totalCourses,
+      icon: BookOpen,
+      note: `${stats.publishedCourses} published courses`,
+    },
+    {
+      title: "Total Images",
+      value: loading ? "..." : stats.totalImages,
+      icon: ImageIcon,
+      note: "Uploaded for recognition",
+    },
+    {
+      title: "Pending Reviews",
+      value: loading ? "..." : stats.pendingImages,
+      icon: Clock,
+      note: "Awaiting admin review",
+    },
   ];
 
   return (
     <div className="min-h-screen bg-[#FAF9FF] px-8 py-8">
       <div className="space-y-7">
-        {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
           <div>
             <h1 className="text-[36px] sm:text-[42px] font-semibold text-gray-950 tracking-tight leading-tight">
               Admin Dashboard
             </h1>
             <p className="text-[15px] text-gray-400 mt-2">
-              Welcome back. Here’s an overview of Mentora’s learning activity.
+              Welcome back. Here’s a live overview of Mentora’s learning and AI
+              review activity.
             </p>
           </div>
 
@@ -95,13 +230,19 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 mt-1">
               <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
               <span className="text-[15px] font-semibold text-gray-950">
-                All services active
+                Connected to Firebase
               </span>
             </div>
           </div>
         </div>
 
-        {/* Stats */}
+        {loading && (
+          <div className="flex items-center gap-2 text-[#B72AD7] text-[14px] font-semibold">
+            <Loader2 size={18} className="animate-spin" />
+            Loading dashboard data...
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
           {cards.map((c) => (
             <StatCard
@@ -114,7 +255,6 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Main Cards */}
         <div className="grid grid-cols-12 gap-5">
           <div className="col-span-12 lg:col-span-7">
             <Card
@@ -122,20 +262,20 @@ export default function Dashboard() {
               subtitle="Current review progress for uploaded ostomy images"
               right={
                 <span className="rounded-full bg-green-50 text-green-700 px-4 py-2 text-[13px] font-semibold">
-                  Last update: Jan 2026
+                  Live data
                 </span>
               }
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <MiniMetric
                   label="Reviewed Images"
-                  value="325"
+                  value={stats.reviewedImages}
                   icon={CheckCircle2}
                   tone="green"
                 />
                 <MiniMetric
                   label="Pending Review"
-                  value="17"
+                  value={stats.pendingImages}
                   icon={AlertCircle}
                   tone="orange"
                 />
@@ -144,27 +284,32 @@ export default function Dashboard() {
               <div className="mt-6">
                 <div className="flex justify-between text-[14px] mb-2">
                   <span className="text-gray-500">Review Completion</span>
-                  <span className="font-semibold text-gray-950">95%</span>
+                  <span className="font-semibold text-gray-950">
+                    {stats.completion}%
+                  </span>
                 </div>
                 <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full w-[95%] rounded-full bg-gradient-to-r from-[#D946EF] to-[#A855F7]" />
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#D946EF] to-[#A855F7]"
+                    style={{ width: `${stats.completion}%` }}
+                  />
                 </div>
               </div>
             </Card>
           </div>
 
           <div className="col-span-12 lg:col-span-5">
-            <Card title="User Activity" subtitle="Recent user engagement summary">
+            <Card title="User Activity" subtitle="Current registered user status">
               <div className="grid grid-cols-1 gap-4">
                 <MiniMetric
-                  label="New users this month"
-                  value="14"
+                  label="Total Registered Users"
+                  value={stats.totalUsers}
                   icon={TrendingUp}
                   tone="purple"
                 />
                 <MiniMetric
                   label="Active Users"
-                  value="03"
+                  value={stats.activeUsers}
                   icon={Activity}
                   tone="green"
                 />
@@ -175,23 +320,23 @@ export default function Dashboard() {
           <div className="col-span-12">
             <Card
               title="Course Activity Overview"
-              subtitle="Latest course and module activity"
+              subtitle="Latest course and module activity from Firestore"
               right={
                 <span className="rounded-full bg-[#F7EAFE] text-[#B72AD7] px-4 py-2 text-[13px] font-semibold">
-                  Updated 02 days ago
+                  {moduleCount} modules
                 </span>
               }
             >
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <MiniMetric
                   label="Total Courses"
-                  value="08"
+                  value={stats.totalCourses}
                   icon={BookOpen}
                   tone="purple"
                 />
                 <MiniMetric
                   label="Total Modules"
-                  value="15"
+                  value={moduleCount}
                   icon={CheckCircle2}
                   tone="green"
                 />
@@ -199,10 +344,14 @@ export default function Dashboard() {
                 <div className="rounded-[24px] bg-gradient-to-br from-[#D946EF] to-[#9333EA] p-5 text-white shadow-[0_16px_35px_rgba(168,85,247,0.18)]">
                   <p className="text-[14px] text-white/75">Latest Course</p>
                   <h4 className="font-semibold text-[19px] mt-1">
-                    Ostomy Care Basics
+                    {stats.latestCourse?.title ||
+                      stats.latestCourse?.courseTitle ||
+                      "No course added yet"}
                   </h4>
                   <p className="text-[14px] text-white/80 mt-3">
-                    04 modules currently available
+                    {stats.latestCourse?.createdAt
+                      ? `Added ${formatDateTime(stats.latestCourse.createdAt)}`
+                      : "Course data will appear here"}
                   </p>
                 </div>
               </div>

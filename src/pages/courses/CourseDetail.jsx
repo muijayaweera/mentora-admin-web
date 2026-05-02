@@ -32,6 +32,9 @@ import {
   deleteQuestion,
 } from "../../services/modules";
 
+import { storage } from "../../firebase/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
 function StatusBadge({ status }) {
   const isPublished = status === "published";
 
@@ -143,6 +146,8 @@ export default function CourseDetail() {
   const [activeQuestionId, setActiveQuestionId] = useState(null);
   const [questionSaving, setQuestionSaving] = useState(false);
   const [questionError, setQuestionError] = useState("");
+  const [questionImageUrl, setQuestionImageUrl] = useState("");
+  const [questionImageFile, setQuestionImageFile] = useState(null);
 
   const inputClass =
     "w-full rounded-[18px] border border-[#F0EAF7] bg-[#FCFBFE] px-4 py-3 text-[14px] text-gray-800 outline-none placeholder:text-gray-400 focus:border-[#E9C8F7] focus:bg-white transition";
@@ -294,17 +299,18 @@ export default function CourseDetail() {
     setModuleModalOpen(true);
   }
 
-  async function openEditModuleModal(m) {
-    setModuleError("");
-    setQuestionError("");
-    setModuleModalMode("edit");
-    setActiveModuleId(m.id);
-    setModuleTitle(m.title || "");
-    setModulePreview(m.preview || "");
-    setModuleContent(m.contentText || "");
-    setModuleQuestions([]);
+    async function openEditModuleModal(m) {
+      setModuleError("");
+      setQuestionError("");
+      setModuleModalMode("edit");
+      setActiveModuleId(m.id);
+      setModuleTitle(m.title || "");
+      setModulePreview(m.preview || "");
+      setModuleContent(m.contentText || "");
+      setModuleQuestions([]);
+      
 
-    resetQuestionForm();
+      resetQuestionForm();
 
     try {
       const qs = await fetchQuestions(id, m.id);
@@ -396,16 +402,18 @@ export default function CourseDetail() {
   }
 
   function resetQuestionForm() {
-    setQuestionMode("add");
-    setActiveQuestionId(null);
-    setQuestionText("");
-    setOptionA("");
-    setOptionB("");
-    setOptionC("");
-    setOptionD("");
-    setCorrectAnswerIndex(0);
-    setQuestionExplanation("");
-  }
+  setQuestionMode("add");
+  setActiveQuestionId(null);
+  setQuestionText("");
+  setOptionA("");
+  setOptionB("");
+  setOptionC("");
+  setOptionD("");
+  setCorrectAnswerIndex(0);
+  setQuestionExplanation("");
+  setQuestionImageUrl("");
+  setQuestionImageFile(null);
+}
 
   function startEditQuestion(q) {
     setQuestionError("");
@@ -418,82 +426,102 @@ export default function CourseDetail() {
     setOptionD(q.options?.[3] || "");
     setCorrectAnswerIndex(q.correctAnswerIndex ?? 0);
     setQuestionExplanation(q.explanation || "");
+    setQuestionImageUrl(q.imageUrl || "");
   }
 
-  async function saveQuestion() {
-    setQuestionError("");
-
-    if (moduleModalMode === "add" || !activeModuleId) {
-      setQuestionError("Save the module first before adding questions.");
-      return;
-    }
-
-    if (!questionText.trim()) {
-      setQuestionError("Question text is required.");
-      return;
-    }
-
-    const options = [
-      optionA.trim(),
-      optionB.trim(),
-      optionC.trim(),
-      optionD.trim(),
-    ];
-
-    if (options.some((opt) => !opt)) {
-      setQuestionError("All 4 answer options are required.");
-      return;
-    }
-
-    setQuestionSaving(true);
-
-    try {
-      if (questionMode === "add") {
-        const payload = {
-          questionText: questionText.trim(),
-          options,
-          correctAnswerIndex: Number(correctAnswerIndex),
-          explanation: questionExplanation.trim(),
-          order: moduleQuestions.length + 1,
-        };
-
-        const newId = await addQuestion(id, activeModuleId, payload);
-
-        setModuleQuestions((prev) =>
-          [...prev, { id: newId, ...payload }].sort(
-            (a, b) => (a.order ?? 0) - (b.order ?? 0)
-          )
-        );
-      } else {
-        const existingQuestion = moduleQuestions.find(
-          (q) => q.id === activeQuestionId
-        );
-
-        const payload = {
-          questionText: questionText.trim(),
-          options,
-          correctAnswerIndex: Number(correctAnswerIndex),
-          explanation: questionExplanation.trim(),
-          order: existingQuestion?.order ?? 0,
-        };
-
-        await updateQuestion(id, activeModuleId, activeQuestionId, payload);
-
-        setModuleQuestions((prev) =>
-          prev
-            .map((q) => (q.id === activeQuestionId ? { ...q, ...payload } : q))
-            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        );
-      }
-
-      resetQuestionForm();
-    } catch (e) {
-      console.error(e);
-      setQuestionError(e?.message || "Failed to save question.");
-    } finally {
-      setQuestionSaving(false);
-    }
+  async function uploadQuestionImageIfNeeded() {
+  if (!questionImageFile) {
+    return questionImageUrl || "";
   }
+
+  const safeFileName = questionImageFile.name.replace(/\s+/g, "_");
+  const storageRef = ref(
+    storage,
+    `quizImages/${id}/${activeModuleId}/${Date.now()}_${safeFileName}`
+  );
+
+  await uploadBytes(storageRef, questionImageFile);
+  return await getDownloadURL(storageRef);
+}
+
+async function saveQuestion() {
+  setQuestionError("");
+
+  if (moduleModalMode === "add" || !activeModuleId) {
+    setQuestionError("Save the module first before adding questions.");
+    return;
+  }
+
+  if (!questionText.trim()) {
+    setQuestionError("Question text is required.");
+    return;
+  }
+
+  const options = [
+    optionA.trim(),
+    optionB.trim(),
+    optionC.trim(),
+    optionD.trim(),
+  ];
+
+  if (options.some((opt) => !opt)) {
+    setQuestionError("All 4 answer options are required.");
+    return;
+  }
+
+  setQuestionSaving(true);
+
+  try {
+    const uploadedImageUrl = await uploadQuestionImageIfNeeded();
+
+    if (questionMode === "add") {
+      const payload = {
+        questionText: questionText.trim(),
+        options,
+        correctAnswerIndex: Number(correctAnswerIndex),
+        explanation: questionExplanation.trim(),
+        imageUrl: uploadedImageUrl,
+        order: moduleQuestions.length + 1,
+      };
+
+      const newId = await addQuestion(id, activeModuleId, payload);
+
+      setModuleQuestions((prev) =>
+        [...prev, { id: newId, ...payload }].sort(
+          (a, b) => (a.order ?? 0) - (b.order ?? 0)
+        )
+      );
+    } else {
+      const existingQuestion = moduleQuestions.find(
+        (q) => q.id === activeQuestionId
+      );
+
+      const payload = {
+        questionText: questionText.trim(),
+        options,
+        correctAnswerIndex: Number(correctAnswerIndex),
+        explanation: questionExplanation.trim(),
+        imageUrl: uploadedImageUrl,
+        order: existingQuestion?.order ?? 0,
+      };
+
+      await updateQuestion(id, activeModuleId, activeQuestionId, payload);
+
+      setModuleQuestions((prev) =>
+        prev
+          .map((q) => (q.id === activeQuestionId ? { ...q, ...payload } : q))
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      );
+    }
+
+    resetQuestionForm();
+  } catch (e) {
+    console.error(e);
+    setQuestionError(e?.message || "Failed to save question.");
+  } finally {
+    setQuestionSaving(false);
+  }
+}
 
   async function handleDeleteQuestion(questionId) {
     const ok = window.confirm("Delete this question?");
@@ -759,6 +787,38 @@ export default function CourseDetail() {
                 rows={2}
                 className={`${inputClass} resize-none`}
               />
+
+              <div>
+                <label className="text-[14px] font-medium text-gray-600">
+                  Question Image (optional)
+                </label>
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setQuestionImageFile(file);
+                    }
+                  }}
+                  className="mt-2 w-full rounded-[18px] border border-[#F0EAF7] bg-white px-4 py-3 text-[13px] text-gray-500"
+                />
+
+                {(questionImageFile || questionImageUrl) && (
+                  <div className="mt-3 h-[170px] w-full overflow-hidden rounded-[20px] border border-[#F2EDF8] bg-white">
+                    <img
+                      src={
+                        questionImageFile
+                          ? URL.createObjectURL(questionImageFile)
+                          : questionImageUrl
+                      }
+                      alt="Question preview"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 {[optionA, optionB, optionC, optionD].map((val, i) => {

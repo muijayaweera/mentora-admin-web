@@ -91,6 +91,7 @@ export async function addQuestion(courseId, moduleId, question) {
     options: question.options || [],
     correctAnswerIndex: question.correctAnswerIndex ?? 0,
     explanation: question.explanation || "",
+    imageUrl: question.imageUrl || "",
     order: question.order ?? 0,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
