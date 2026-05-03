@@ -128,6 +128,7 @@ export default function CourseDetail() {
   const [moduleTitle, setModuleTitle] = useState("");
   const [modulePreview, setModulePreview] = useState("");
   const [moduleContent, setModuleContent] = useState("");
+  const [moduleVideoUrl, setModuleVideoUrl] = useState("");
 
   const [moduleSaving, setModuleSaving] = useState(false);
   const [moduleError, setModuleError] = useState("");
@@ -294,6 +295,7 @@ export default function CourseDetail() {
     setModuleTitle("");
     setModulePreview("");
     setModuleContent("");
+    setModuleVideoUrl("");
     setModuleQuestions([]);
     resetQuestionForm();
     setModuleModalOpen(true);
@@ -307,6 +309,7 @@ export default function CourseDetail() {
       setModuleTitle(m.title || "");
       setModulePreview(m.preview || "");
       setModuleContent(m.contentText || "");
+      setModuleVideoUrl(m.videoUrl || "");  
       setModuleQuestions([]);
       
 
@@ -345,6 +348,7 @@ export default function CourseDetail() {
           title: moduleTitle.trim(),
           preview: modulePreview.trim(),
           contentText: moduleContent.trim(),
+          videoUrl: moduleVideoUrl.trim(),
           type: "Text",
           order: modules.length + 1,
         };
@@ -365,10 +369,10 @@ export default function CourseDetail() {
           title: moduleTitle.trim(),
           preview: modulePreview.trim(),
           contentText: moduleContent.trim(),
+          videoUrl: moduleVideoUrl.trim(),
           type: "Text",
           order: existingModule?.order ?? 0,
         };
-
         await updateModule(id, activeModuleId, payload);
 
         setModules((prev) =>
@@ -760,6 +764,13 @@ async function saveQuestion() {
           placeholder="Full module content..."
           rows={8}
           className={`${inputClass} resize-none`}
+        />
+
+        <input
+          value={moduleVideoUrl}
+          onChange={(e) => setModuleVideoUrl(e.target.value)}
+          placeholder="Optional YouTube video URL"
+          className={inputClass}
         />
       </div>
 
