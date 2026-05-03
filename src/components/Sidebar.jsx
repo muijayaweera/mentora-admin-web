@@ -1,4 +1,4 @@
-import { LayoutDashboard, BookOpen, Image, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, BookOpen, Image, Users, LogOut, BarChart3, } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase/firebase";
@@ -11,6 +11,7 @@ export default function Sidebar() {
     { name: "Courses", icon: BookOpen, path: "/courses" },
     { name: "Image Review", icon: Image, path: "/imagereview" },
     { name: "Users", icon: Users, path: "/users" },
+    { name: "Learning Analytics", icon: BarChart3, path: "/learning-analytics" },
   ];
 
   const handleLogout = async () => {

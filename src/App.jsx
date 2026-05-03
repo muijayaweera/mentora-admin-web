@@ -9,6 +9,7 @@ import Users from "./pages/Users";
 import AdminLayout from "./layouts/AdminLayout";
 import AddCourse from "./pages/courses/AddCourse";
 import CourseDetail from "./pages/courses/CourseDetail";
+import LearningAnalytics from "./pages/LearningAnalytics";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/courses/:id" element={<CourseDetail />} />
           <Route path="/imagereview" element={<ImageReview />} />
           <Route path="/users" element={<Users />} />
+          <Route path="/learning-analytics" element={<LearningAnalytics />} />
         </Route>
 
         {/* Fallback */}
