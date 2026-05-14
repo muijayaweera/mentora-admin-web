@@ -1,16 +1,61 @@
-# React + Vite
+# Mentora – Administrative Web Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Overview
 
-Currently, two official plugins are available:
+The Mentora Administrative Web Application was developed to support centralized management of educational content, image review workflows, user monitoring, and AI dataset refinement for the Mentora mobile learning platform.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The system enables administrators to manage courses, modules, quizzes, and uploaded image data through a modern web-based interface integrated with Firebase services.
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Key Features
 
-## Expanding the ESLint configuration
+* Course and module management
+* Quiz management system
+* User monitoring
+* Image review and dataset refinement
+* Firebase cloud integration
+* Administrative dashboard
+* Role-based authentication system
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+
+## Technologies Used
+
+* React
+* Vite
+* JavaScript
+* Tailwind CSS
+* Firebase Authentication
+* Cloud Firestore
+* Firebase Storage
+
+---
+
+## Administrative Features
+
+### Course Management
+
+Administrators can create, edit, publish, and organize learning content dynamically through the web platform.
+
+### Quiz Management
+
+The system supports module-based quiz creation and educational progress monitoring.
+
+### Image Review System
+
+Uploaded stoma images and AI prediction results can be reviewed and corrected to support future dataset refinement and model improvement.
+
+---
+
+## Screenshots
+
+[Insert Admin Panel Screenshots Here]
+
+---
+
+## Author
+
+Upeka Jayaweera
+BSc (Hons) Software Engineering
+NSBM Green University
