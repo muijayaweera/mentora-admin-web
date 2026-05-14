@@ -238,7 +238,7 @@ export default function Users() {
 
           <div className="overflow-x-auto">
             <div className="min-w-[1030px]">
-              <div className="grid grid-cols-[230px_200px_130px_130px_160px_180px] items-center px-6 py-4 text-[13px] font-semibold text-gray-400 border-b border-[#F3EEF8]">
+              <div className="grid grid-cols-[260px_260px_120px_120px_150px_170px] items-center px-6 py-4 text-[13px] font-semibold text-gray-400 border-b border-[#F3EEF8]">
                 <div>User Email</div>
                 <div>Name</div>
                 <div>Role</div>

@@ -6,9 +6,11 @@ import { fetchCourses } from "../services/courses";
 export default function Courses() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const gridCols =
+   "grid grid-cols-[120px_minmax(280px,1fr)_90px_150px_150px_110px] items-center";
 
   useEffect(() => {
     async function load() {
@@ -55,10 +57,35 @@ export default function Courses() {
     return "bg-gray-50 text-gray-600 border-gray-100";
   };
 
+  const formatDate = (value) => {
+    if (!value) return "Not updated";
+
+    let date;
+
+    if (value?.toDate) {
+      date = value.toDate();
+    } else if (value?.seconds) {
+      date = new Date(value.seconds * 1000);
+    } else {
+      date = new Date(value);
+    }
+
+    if (Number.isNaN(date.getTime())) return "Not updated";
+
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const getLastUpdate = (course) => {
+    return formatDate(course.updatedAt || course.createdAt || course.publishedAt);
+  };
+
   return (
     <div className="min-h-screen bg-[#FAF9FF] px-8 py-8 font-[Poppins]">
       <div className="space-y-7">
-        {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
           <div>
             <h1 className="text-[36px] sm:text-[42px] font-semibold text-gray-950 tracking-tight leading-tight">
@@ -79,7 +106,6 @@ export default function Courses() {
           </button>
         </div>
 
-        {/* Toolbar */}
         <div className="bg-white rounded-[28px] border border-[#F0EAF7] shadow-[0_12px_35px_rgba(30,20,60,0.04)] p-5">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -111,88 +137,98 @@ export default function Courses() {
           </div>
         </div>
 
-        {/* Course Table */}
         <div className="bg-white rounded-[30px] border border-[#F0EAF7] shadow-[0_12px_35px_rgba(30,20,60,0.04)] overflow-hidden">
-          <div className="grid grid-cols-[120px_1fr_120px_150px_150px_110px] items-center px-10 py-4 border-b border-[#F3EEF8] text-[13px] font-semibold text-gray-400">
-            <div>Code</div>
-            <div>Course Title</div>
-            <div>Modules</div>
-            <div>Status</div>
-            <div>Last Update</div>
-            <div className="text-right">Action</div>
-          </div>
-
-          <div className="px-4 py-4 space-y-3">
-            {loading && (
-              <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-12 text-center">
-                <Loader2 className="mx-auto mb-3 animate-spin text-[#B72AD7]" size={26} />
-                <p className="text-[15px] font-medium text-gray-500">
-                  Loading courses...
-                </p>
+          <div className="overflow-x-auto">
+            <div className="min-w-[980px]">
+              <div
+                className={`${gridCols} px-8 py-4 border-b border-[#F3EEF8] text-[13px] font-semibold text-gray-400`}
+              >
+                <div>Code</div>
+                <div>Course Title</div>
+                <div className="pl-1">Modules</div>
+                <div>Status</div>
+                <div>Last Update</div>
+                <div className="text-right">Action</div>
               </div>
-            )}
 
-            {!loading &&
-              filtered.map((c) => (
-                <div
-                  key={c.id}
-                  className="grid grid-cols-[120px_1fr_120px_150px_150px_110px] items-center rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-4 text-[14px] text-gray-700 hover:bg-white hover:shadow-[0_12px_30px_rgba(30,20,60,0.05)] transition-all duration-200"
-                >
-                  <div className="font-semibold text-gray-800">
-                    {c.code || "-"}
-                  </div>
-
-                  <div>
-                    <p className="font-semibold text-gray-950">
-                      {c.title || "-"}
-                    </p>
-                    <p className="text-[12px] text-gray-400 mt-1">
-                      Mentora learning course
+              <div className="px-4 py-4 space-y-3">
+                {loading && (
+                  <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-12 text-center">
+                    <Loader2
+                      className="mx-auto mb-3 animate-spin text-[#B72AD7]"
+                      size={26}
+                    />
+                    <p className="text-[15px] font-medium text-gray-500">
+                      Loading courses...
                     </p>
                   </div>
+                )}
 
-                  <div className="font-semibold text-gray-800">
-                    {c.modulesCount ?? 0}
-                  </div>
-
-                  <div>
-                    <span
-                      className={`inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-semibold ${getStatusStyle(
-                        c.status
-                      )}`}
+                {!loading &&
+                  filtered.map((c) => (
+                    <div
+                      key={c.id}
+                      className={`${gridCols} rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-4 text-[14px] text-gray-700 hover:bg-white hover:shadow-[0_12px_30px_rgba(30,20,60,0.05)] transition-all duration-200`}
                     >
-                      {formatStatus(c.status)}
-                    </span>
+                      <div className="pl-1 font-semibold text-gray-800">
+                        {c.code || "-"}
+                      </div>
+
+                      <div className="pr-6">
+                        <p className="font-semibold text-gray-950 leading-snug">
+                          {c.title || "-"}
+                        </p>
+                        <p className="text-[12px] text-gray-400 mt-1">
+                          Mentora learning course
+                        </p>
+                      </div>
+
+                      <div className="text-center font-semibold text-gray-800">
+                        {c.modulesCount ?? 0}
+                      </div>
+
+                      <div>
+                        <span
+                          className={`inline-flex items-center justify-center rounded-full border px-3 py-1 text-[12px] font-semibold ${getStatusStyle(
+                            c.status
+                          )}`}
+                        >
+                          {formatStatus(c.status)}
+                        </span>
+                      </div>
+
+                      <div className="font-medium text-gray-500">
+                        {getLastUpdate(c)}
+                      </div>
+
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => navigate(`/courses/${c.id}`)}
+                          type="button"
+                          className="inline-flex items-center gap-2 rounded-full border border-[#F0EAF7] bg-white px-4 py-2 text-[13px] font-semibold text-gray-600 hover:border-[#E9C8F7] hover:text-[#B72AD7] hover:bg-[#FFF9FF] transition"
+                        >
+                          <Eye size={15} />
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                {!loading && filtered.length === 0 && (
+                  <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-14 text-center">
+                    <div className="mx-auto mb-4 h-12 w-12 rounded-2xl bg-[#F7EAFE] flex items-center justify-center">
+                      <Search size={22} className="text-[#B72AD7]" />
+                    </div>
+                    <p className="text-[16px] font-semibold text-gray-800">
+                      No courses found
+                    </p>
+                    <p className="text-[14px] text-gray-400 mt-1">
+                      Try searching with another course title, code, or status.
+                    </p>
                   </div>
-
-                  <div className="font-medium text-gray-400">—</div>
-
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => navigate(`/courses/${c.id}`)}
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-full border border-[#F0EAF7] bg-white px-4 py-2 text-[13px] font-semibold text-gray-600 hover:border-[#E9C8F7] hover:text-[#B72AD7] hover:bg-[#FFF9FF] transition"
-                    >
-                      <Eye size={15} />
-                      View
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-            {!loading && filtered.length === 0 && (
-              <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-14 text-center">
-                <div className="mx-auto mb-4 h-12 w-12 rounded-2xl bg-[#F7EAFE] flex items-center justify-center">
-                  <Search size={22} className="text-[#B72AD7]" />
-                </div>
-                <p className="text-[16px] font-semibold text-gray-800">
-                  No courses found
-                </p>
-                <p className="text-[14px] text-gray-400 mt-1">
-                  Try searching with another course title, code, or status.
-                </p>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
