@@ -7,18 +7,13 @@ import {
 } from "../../services/courses";
 import {
   Plus,
-  Pencil,
-  Trash2,
   CheckCircle,
-  Save,
-  X,
   ArrowLeft,
   BookOpen,
   Clock,
   Users,
   Layers,
   FileText,
-  HelpCircle,
   Loader2,
 } from "lucide-react";
 import {
@@ -194,7 +189,10 @@ export default function CourseDetail() {
     return (
       <div className="min-h-screen bg-[#FAF9FF] px-8 py-8 font-[Poppins] flex items-center justify-center">
         <div className="rounded-[28px] bg-white border border-[#F0EAF7] px-8 py-7 text-center shadow-[0_12px_35px_rgba(30,20,60,0.04)]">
-          <Loader2 className="mx-auto mb-3 animate-spin text-[#B72AD7]" size={28} />
+          <Loader2
+            className="mx-auto mb-3 animate-spin text-[#B72AD7]"
+            size={28}
+          />
           <p className="text-[15px] font-medium text-gray-500">
             Loading course...
           </p>
@@ -301,19 +299,18 @@ export default function CourseDetail() {
     setModuleModalOpen(true);
   }
 
-    async function openEditModuleModal(m) {
-      setModuleError("");
-      setQuestionError("");
-      setModuleModalMode("edit");
-      setActiveModuleId(m.id);
-      setModuleTitle(m.title || "");
-      setModulePreview(m.preview || "");
-      setModuleContent(m.contentText || "");
-      setModuleVideoUrl(m.videoUrl || "");  
-      setModuleQuestions([]);
-      
+  async function openEditModuleModal(m) {
+    setModuleError("");
+    setQuestionError("");
+    setModuleModalMode("edit");
+    setActiveModuleId(m.id);
+    setModuleTitle(m.title || "");
+    setModulePreview(m.preview || "");
+    setModuleContent(m.contentText || "");
+    setModuleVideoUrl(m.videoUrl || "");
+    setModuleQuestions([]);
 
-      resetQuestionForm();
+    resetQuestionForm();
 
     try {
       const qs = await fetchQuestions(id, m.id);
@@ -373,6 +370,7 @@ export default function CourseDetail() {
           type: "Text",
           order: existingModule?.order ?? 0,
         };
+
         await updateModule(id, activeModuleId, payload);
 
         setModules((prev) =>
@@ -406,18 +404,18 @@ export default function CourseDetail() {
   }
 
   function resetQuestionForm() {
-  setQuestionMode("add");
-  setActiveQuestionId(null);
-  setQuestionText("");
-  setOptionA("");
-  setOptionB("");
-  setOptionC("");
-  setOptionD("");
-  setCorrectAnswerIndex(0);
-  setQuestionExplanation("");
-  setQuestionImageUrl("");
-  setQuestionImageFile(null);
-}
+    setQuestionMode("add");
+    setActiveQuestionId(null);
+    setQuestionText("");
+    setOptionA("");
+    setOptionB("");
+    setOptionC("");
+    setOptionD("");
+    setCorrectAnswerIndex(0);
+    setQuestionExplanation("");
+    setQuestionImageUrl("");
+    setQuestionImageFile(null);
+  }
 
   function startEditQuestion(q) {
     setQuestionError("");
@@ -431,101 +429,102 @@ export default function CourseDetail() {
     setCorrectAnswerIndex(q.correctAnswerIndex ?? 0);
     setQuestionExplanation(q.explanation || "");
     setQuestionImageUrl(q.imageUrl || "");
+    setQuestionImageFile(null);
   }
 
   async function uploadQuestionImageIfNeeded() {
-  if (!questionImageFile) {
-    return questionImageUrl || "";
-  }
-
-  const safeFileName = questionImageFile.name.replace(/\s+/g, "_");
-  const storageRef = ref(
-    storage,
-    `quizImages/${id}/${activeModuleId}/${Date.now()}_${safeFileName}`
-  );
-
-  await uploadBytes(storageRef, questionImageFile);
-  return await getDownloadURL(storageRef);
-}
-
-async function saveQuestion() {
-  setQuestionError("");
-
-  if (moduleModalMode === "add" || !activeModuleId) {
-    setQuestionError("Save the module first before adding questions.");
-    return;
-  }
-
-  if (!questionText.trim()) {
-    setQuestionError("Question text is required.");
-    return;
-  }
-
-  const options = [
-    optionA.trim(),
-    optionB.trim(),
-    optionC.trim(),
-    optionD.trim(),
-  ];
-
-  if (options.some((opt) => !opt)) {
-    setQuestionError("All 4 answer options are required.");
-    return;
-  }
-
-  setQuestionSaving(true);
-
-  try {
-    const uploadedImageUrl = await uploadQuestionImageIfNeeded();
-
-    if (questionMode === "add") {
-      const payload = {
-        questionText: questionText.trim(),
-        options,
-        correctAnswerIndex: Number(correctAnswerIndex),
-        explanation: questionExplanation.trim(),
-        imageUrl: uploadedImageUrl,
-        order: moduleQuestions.length + 1,
-      };
-
-      const newId = await addQuestion(id, activeModuleId, payload);
-
-      setModuleQuestions((prev) =>
-        [...prev, { id: newId, ...payload }].sort(
-          (a, b) => (a.order ?? 0) - (b.order ?? 0)
-        )
-      );
-    } else {
-      const existingQuestion = moduleQuestions.find(
-        (q) => q.id === activeQuestionId
-      );
-
-      const payload = {
-        questionText: questionText.trim(),
-        options,
-        correctAnswerIndex: Number(correctAnswerIndex),
-        explanation: questionExplanation.trim(),
-        imageUrl: uploadedImageUrl,
-        order: existingQuestion?.order ?? 0,
-      };
-
-      await updateQuestion(id, activeModuleId, activeQuestionId, payload);
-
-      setModuleQuestions((prev) =>
-        prev
-          .map((q) => (q.id === activeQuestionId ? { ...q, ...payload } : q))
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-      );
+    if (!questionImageFile) {
+      return questionImageUrl || "";
     }
 
-    resetQuestionForm();
-  } catch (e) {
-    console.error(e);
-    setQuestionError(e?.message || "Failed to save question.");
-  } finally {
-    setQuestionSaving(false);
+    const safeFileName = questionImageFile.name.replace(/\s+/g, "_");
+    const storageRef = ref(
+      storage,
+      `quizImages/${id}/${activeModuleId}/${Date.now()}_${safeFileName}`
+    );
+
+    await uploadBytes(storageRef, questionImageFile);
+    return await getDownloadURL(storageRef);
   }
-}
+
+  async function saveQuestion() {
+    setQuestionError("");
+
+    if (moduleModalMode === "add" || !activeModuleId) {
+      setQuestionError("Save the module first before adding questions.");
+      return;
+    }
+
+    if (!questionText.trim()) {
+      setQuestionError("Question text is required.");
+      return;
+    }
+
+    const options = [
+      optionA.trim(),
+      optionB.trim(),
+      optionC.trim(),
+      optionD.trim(),
+    ];
+
+    if (options.some((opt) => !opt)) {
+      setQuestionError("All 4 answer options are required.");
+      return;
+    }
+
+    setQuestionSaving(true);
+
+    try {
+      const uploadedImageUrl = await uploadQuestionImageIfNeeded();
+
+      if (questionMode === "add") {
+        const payload = {
+          questionText: questionText.trim(),
+          options,
+          correctAnswerIndex: Number(correctAnswerIndex),
+          explanation: questionExplanation.trim(),
+          imageUrl: uploadedImageUrl,
+          order: moduleQuestions.length + 1,
+        };
+
+        const newId = await addQuestion(id, activeModuleId, payload);
+
+        setModuleQuestions((prev) =>
+          [...prev, { id: newId, ...payload }].sort(
+            (a, b) => (a.order ?? 0) - (b.order ?? 0)
+          )
+        );
+      } else {
+        const existingQuestion = moduleQuestions.find(
+          (q) => q.id === activeQuestionId
+        );
+
+        const payload = {
+          questionText: questionText.trim(),
+          options,
+          correctAnswerIndex: Number(correctAnswerIndex),
+          explanation: questionExplanation.trim(),
+          imageUrl: uploadedImageUrl,
+          order: existingQuestion?.order ?? 0,
+        };
+
+        await updateQuestion(id, activeModuleId, activeQuestionId, payload);
+
+        setModuleQuestions((prev) =>
+          prev
+            .map((q) => (q.id === activeQuestionId ? { ...q, ...payload } : q))
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        );
+      }
+
+      resetQuestionForm();
+    } catch (e) {
+      console.error(e);
+      setQuestionError(e?.message || "Failed to save question.");
+    } finally {
+      setQuestionSaving(false);
+    }
+  }
 
   async function handleDeleteQuestion(questionId) {
     const ok = window.confirm("Delete this question?");
@@ -541,420 +540,450 @@ async function saveQuestion() {
   }
 
   return (
-  <div className="min-h-screen bg-[#FAF9FF] px-8 py-8 font-[Poppins]">
-    <div className="space-y-7">
+    <div className="min-h-screen bg-[#FAF9FF] px-8 py-8 font-[Poppins]">
+      <div className="space-y-7">
+        {/* ===== HEADER ===== */}
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+          <div className="max-w-[720px]">
+            <button
+              onClick={() => navigate("/courses")}
+              className="mb-5 inline-flex items-center gap-2 text-[14px] text-gray-400 hover:text-[#B72AD7]"
+            >
+              <ArrowLeft size={17} />
+              Back to Courses
+            </button>
 
-      {/* ===== HEADER ===== */}
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-        <div className="max-w-[720px]">
-          <button
-            onClick={() => navigate("/courses")}
-            className="mb-5 inline-flex items-center gap-2 text-[14px] text-gray-400 hover:text-[#B72AD7]"
-          >
-            <ArrowLeft size={17} />
-            Back to Courses
-          </button>
+            {isEditing ? (
+              <input
+                value={form.title}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, title: e.target.value }))
+                }
+                className="w-full text-[36px] font-semibold text-gray-950 bg-transparent outline-none border-b border-[#E9C8F7] pb-1"
+              />
+            ) : (
+              <h1 className="text-[36px] font-semibold text-gray-950">
+                {course.title}
+              </h1>
+            )}
 
+            <div className="mt-3 flex items-center gap-3 flex-wrap">
+              <span className="text-[14px] text-gray-400">
+                Code: {course.code}
+              </span>
+
+              <StatusBadge status={course.status} />
+            </div>
+
+            {error && (
+              <div className="mt-4 rounded-[18px] bg-red-50 border border-red-100 px-4 py-3 text-[14px] text-red-600">
+                {error}
+              </div>
+            )}
+          </div>
+
+          {/* ACTIONS */}
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={handlePublish}
+              disabled={!canPublish}
+              className={`flex items-center gap-2 px-5 py-3 rounded-[18px] text-[14px] font-semibold transition
+              ${
+                canPublish
+                  ? "bg-gradient-to-r from-[#D946EF] to-[#9333EA] text-white"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              <CheckCircle size={17} />
+              Publish
+            </button>
+
+            {!isEditing ? (
+              <button
+                onClick={startEdit}
+                className="px-5 py-3 rounded-[18px] bg-white border border-[#F0EAF7] text-gray-600 hover:bg-[#FCFBFE]"
+              >
+                Edit
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={cancelEdit}
+                  className="px-5 py-3 rounded-[18px] bg-white border border-[#F0EAF7]"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={saveEdit}
+                  className="px-5 py-3 rounded-[18px] bg-[#F7EAFE] text-[#B72AD7]"
+                >
+                  {saving ? "Saving..." : "Save"}
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={handleDelete}
+              className="px-5 py-3 rounded-[18px] bg-white border border-red-100 text-red-600 hover:bg-red-50"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+
+        {/* ===== OVERVIEW ===== */}
+        <SectionCard
+          title="Course Overview"
+          subtitle="General course information"
+          icon={FileText}
+        >
           {isEditing ? (
-            <input
-              value={form.title}
-              onChange={(e) => setForm(p => ({ ...p, title: e.target.value }))}
-              className="w-full text-[36px] font-semibold text-gray-950 bg-transparent outline-none border-b border-[#E9C8F7] pb-1"
+            <textarea
+              value={form.description}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, description: e.target.value }))
+              }
+              rows={4}
+              className={`${inputClass} resize-none`}
             />
           ) : (
-            <h1 className="text-[36px] font-semibold text-gray-950">
-              {course.title}
-            </h1>
+            <p className="text-gray-700">{course.description}</p>
           )}
 
-          <div className="mt-3 flex items-center gap-3 flex-wrap">
-            <span className="text-[14px] text-gray-400">
-              Code: {course.code}
-            </span>
-
-            <StatusBadge status={course.status} />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+            <InfoPill icon={Layers} label="Category" value={course.category} />
+            <InfoPill
+              icon={Clock}
+              label="Duration"
+              value={course.estimatedDuration}
+            />
+            <InfoPill
+              icon={Users}
+              label="Audience"
+              value={course.targetAudience}
+            />
           </div>
+        </SectionCard>
 
-          {error && (
-            <div className="mt-4 rounded-[18px] bg-red-50 border border-red-100 px-4 py-3 text-[14px] text-red-600">
-              {error}
-            </div>
-          )}
-        </div>
-
-        {/* ACTIONS */}
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={handlePublish}
-            disabled={!canPublish}
-            className={`flex items-center gap-2 px-5 py-3 rounded-[18px] text-[14px] font-semibold transition
-              ${canPublish
-                ? "bg-gradient-to-r from-[#D946EF] to-[#9333EA] text-white"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}
-          >
-            <CheckCircle size={17} />
-            Publish
-          </button>
-
-          {!isEditing ? (
+        {/* ===== MODULES ===== */}
+        <SectionCard
+          title="Modules"
+          subtitle="Manage course content"
+          icon={BookOpen}
+          right={
             <button
-              onClick={startEdit}
-              className="px-5 py-3 rounded-[18px] bg-white border border-[#F0EAF7] text-gray-600 hover:bg-[#FCFBFE]"
+              onClick={openAddModuleModal}
+              className="flex items-center gap-2 px-5 py-3 rounded-[18px] bg-gradient-to-r from-[#D946EF] to-[#9333EA] text-white text-[14px] font-semibold"
             >
-              Edit
+              <Plus size={16} />
+              Add Module
             </button>
-          ) : (
-            <>
-              <button
-                onClick={cancelEdit}
-                className="px-5 py-3 rounded-[18px] bg-white border border-[#F0EAF7]"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={saveEdit}
-                className="px-5 py-3 rounded-[18px] bg-[#F7EAFE] text-[#B72AD7]"
-              >
-                {saving ? "Saving..." : "Save"}
-              </button>
-            </>
-          )}
-
-          <button
-            onClick={handleDelete}
-            className="px-5 py-3 rounded-[18px] bg-white border border-red-100 text-red-600 hover:bg-red-50"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-
-      {/* ===== OVERVIEW ===== */}
-      <SectionCard
-        title="Course Overview"
-        subtitle="General course information"
-        icon={FileText}
-      >
-        {isEditing ? (
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))}
-            rows={4}
-            className={`${inputClass} resize-none`}
-          />
-        ) : (
-          <p className="text-gray-700">{course.description}</p>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-          <InfoPill icon={Layers} label="Category" value={course.category} />
-          <InfoPill icon={Clock} label="Duration" value={course.estimatedDuration} />
-          <InfoPill icon={Users} label="Audience" value={course.targetAudience} />
-        </div>
-      </SectionCard>
-
-      {/* ===== MODULES ===== */}
-      <SectionCard
-        title="Modules"
-        subtitle="Manage course content"
-        icon={BookOpen}
-        right={
-          <button
-            onClick={openAddModuleModal}
-            className="flex items-center gap-2 px-5 py-3 rounded-[18px] bg-gradient-to-r from-[#D946EF] to-[#9333EA] text-white text-[14px] font-semibold"
-          >
-            <Plus size={16} />
-            Add Module
-          </button>
-        }
-      >
-        {modules.length === 0 ? (
-          <div className="text-center text-gray-400 py-10">
-            No modules added yet.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {modules.map((m, idx) => (
-              <div
-                key={m.id}
-                className="flex justify-between items-center rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] px-5 py-4"
-              >
-                <div>
-                  <p className="font-semibold text-gray-900">
-                    {(m.order ?? idx + 1)}. {m.title}
-                  </p>
-                  <p className="text-[13px] text-gray-400 mt-1">
-                    {m.preview}
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openEditModuleModal(m)}
-                    className="px-4 py-2 rounded-full border border-[#F0EAF7] bg-white text-[13px]"
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    onClick={() => handleDeleteModule(m.id)}
-                    className="px-4 py-2 rounded-full border border-red-100 text-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
-
-      {moduleModalOpen && (
-  <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-    <div className="w-[900px] max-h-[90vh] overflow-y-auto bg-white rounded-[30px] p-7">
-
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h3 className="text-[20px] font-semibold text-gray-900">
-            {moduleModalMode === "add" ? "Add Module" : "Edit Module"}
-          </h3>
-          <p className="text-[13px] text-gray-400 mt-1">
-            Add content and quiz questions for this module
-          </p>
-        </div>
-
-        <button
-          onClick={closeModuleModal}
-          className="px-4 py-2 rounded-xl border border-[#F0EAF7]"
+          }
         >
-          Close
-        </button>
-      </div>
-
-      {/* Errors */}
-      {moduleError && (
-        <div className="mb-4 text-red-600 text-[14px]">{moduleError}</div>
-      )}
-      {questionError && (
-        <div className="mb-4 text-red-600 text-[14px]">{questionError}</div>
-      )}
-
-      {/* Module Fields */}
-      <div className="space-y-4">
-        <input
-          value={moduleTitle}
-          onChange={(e) => setModuleTitle(e.target.value)}
-          placeholder="Module title"
-          className={inputClass}
-        />
-
-        <textarea
-          value={modulePreview}
-          onChange={(e) => setModulePreview(e.target.value)}
-          placeholder="Preview sentence"
-          rows={2}
-          className={`${inputClass} resize-none`}
-        />
-
-        <textarea
-          value={moduleContent}
-          onChange={(e) => setModuleContent(e.target.value)}
-          placeholder="Full module content..."
-          rows={8}
-          className={`${inputClass} resize-none`}
-        />
-
-        <input
-          value={moduleVideoUrl}
-          onChange={(e) => setModuleVideoUrl(e.target.value)}
-          placeholder="Optional YouTube video URL"
-          className={inputClass}
-        />
-      </div>
-
-      {/* ================= QUIZ SECTION ================= */}
-      <div className="mt-8 border-t border-[#F0EAF7] pt-6">
-        <h4 className="text-[18px] font-semibold text-gray-900 mb-4">
-          Quiz Questions
-        </h4>
-
-        {moduleModalMode === "add" && (
-          <div className="mb-4 text-yellow-600 text-[14px]">
-            Save module first before adding questions
-          </div>
-        )}
-
-        {moduleModalMode === "edit" && (
-          <>
-            {/* Question Form */}
-            <div className="space-y-4 bg-[#FCFBFE] border border-[#F2EDF8] p-5 rounded-[24px]">
-
-              <textarea
-                value={questionText}
-                onChange={(e) => setQuestionText(e.target.value)}
-                placeholder="Question"
-                rows={2}
-                className={`${inputClass} resize-none`}
-              />
-
-              <div>
-                <label className="text-[14px] font-medium text-gray-600">
-                  Question Image (optional)
-                </label>
-
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setQuestionImageFile(file);
-                    }
-                  }}
-                  className="mt-2 w-full rounded-[18px] border border-[#F0EAF7] bg-white px-4 py-3 text-[13px] text-gray-500"
-                />
-
-                {(questionImageFile || questionImageUrl) && (
-                  <div className="mt-3 h-[170px] w-full overflow-hidden rounded-[20px] border border-[#F2EDF8] bg-white">
-                    <img
-                      src={
-                        questionImageFile
-                          ? URL.createObjectURL(questionImageFile)
-                          : questionImageUrl
-                      }
-                      alt="Question preview"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                {[optionA, optionB, optionC, optionD].map((val, i) => {
-                  const setters = [
-                    setOptionA,
-                    setOptionB,
-                    setOptionC,
-                    setOptionD,
-                  ];
-                  return (
-                    <input
-                      key={i}
-                      value={val}
-                      onChange={(e) => setters[i](e.target.value)}
-                      placeholder={`Option ${i + 1}`}
-                      className={inputClass}
-                    />
-                  );
-                })}
-              </div>
-
-              <select
-                value={correctAnswerIndex}
-                onChange={(e) => setCorrectAnswerIndex(Number(e.target.value))}
-                className={inputClass}
-              >
-                <option value={0}>Correct: Option 1</option>
-                <option value={1}>Correct: Option 2</option>
-                <option value={2}>Correct: Option 3</option>
-                <option value={3}>Correct: Option 4</option>
-              </select>
-
-              <textarea
-                value={questionExplanation}
-                onChange={(e) => setQuestionExplanation(e.target.value)}
-                placeholder="Explanation"
-                rows={2}
-                className={`${inputClass} resize-none`}
-              />
-
-              <div className="flex justify-end">
-                <button
-                  onClick={saveQuestion}
-                  disabled={questionSaving}
-                  className="px-5 py-3 rounded-[18px] bg-[#B72AD7] text-white text-[14px]"
-                >
-                  {questionSaving
-                    ? "Saving..."
-                    : questionMode === "add"
-                    ? "Add Question"
-                    : "Update Question"}
-                </button>
-              </div>
+          {modules.length === 0 ? (
+            <div className="text-center text-gray-400 py-10">
+              No modules added yet.
             </div>
-
-            {/* Question List */}
-            <div className="mt-5 space-y-3">
-              {moduleQuestions.map((q, idx) => (
+          ) : (
+            <div className="space-y-3">
+              {modules.map((m, idx) => (
                 <div
-                  key={q.id}
-                  className="rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] p-4"
+                  key={m.id}
+                  className="flex justify-between items-center rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] px-5 py-4"
                 >
-                  <div className="flex justify-between">
+                  <div>
                     <p className="font-semibold text-gray-900">
-                      {idx + 1}. {q.questionText}
+                      {m.order ?? idx + 1}. {m.title}
                     </p>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => startEditQuestion(q)}
-                        className="text-[13px] px-3 py-1 border rounded-full"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteQuestion(q.id)}
-                        className="text-[13px] px-3 py-1 border rounded-full text-red-600"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <p className="text-[13px] text-gray-400 mt-1">
+                      {m.preview}
+                    </p>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    {(q.options || []).map((opt, i) => (
-                      <div
-                        key={i}
-                        className={`px-3 py-2 rounded-lg text-[12px] ${
-                          i === q.correctAnswerIndex
-                            ? "bg-green-100 text-green-700"
-                            : "bg-white text-gray-500"
-                        }`}
-                      >
-                        {i + 1}. {opt}
-                      </div>
-                    ))}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openEditModuleModal(m)}
+                      className="px-4 py-2 rounded-full border border-[#F0EAF7] bg-white text-[13px]"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteModule(m.id)}
+                      className="px-4 py-2 rounded-full border border-red-100 text-red-600"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
-          </>
+          )}
+        </SectionCard>
+
+        {moduleModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4 py-4">
+            <div className="w-[min(1180px,94vw)] h-[92vh] overflow-y-auto bg-white rounded-[30px] p-7">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-[20px] font-semibold text-gray-900">
+                    {moduleModalMode === "add" ? "Add Module" : "Edit Module"}
+                  </h3>
+                  <p className="text-[13px] text-gray-400 mt-1">
+                    Add content and quiz questions for this module
+                  </p>
+                </div>
+
+                <button
+                  onClick={closeModuleModal}
+                  className="px-4 py-2 rounded-xl border border-[#F0EAF7]"
+                >
+                  Close
+                </button>
+              </div>
+
+              {/* Errors */}
+              {moduleError && (
+                <div className="mb-4 text-red-600 text-[14px]">
+                  {moduleError}
+                </div>
+              )}
+              {questionError && (
+                <div className="mb-4 text-red-600 text-[14px]">
+                  {questionError}
+                </div>
+              )}
+
+              {/* Module Fields */}
+              <div className="space-y-4">
+                <input
+                  value={moduleTitle}
+                  onChange={(e) => setModuleTitle(e.target.value)}
+                  placeholder="Module title"
+                  className={inputClass}
+                />
+
+                <textarea
+                  value={modulePreview}
+                  onChange={(e) => setModulePreview(e.target.value)}
+                  placeholder="Preview sentence"
+                  rows={2}
+                  className={`${inputClass} resize-none`}
+                />
+
+                <textarea
+                  value={moduleContent}
+                  onChange={(e) => setModuleContent(e.target.value)}
+                  placeholder="Full module content..."
+                  rows={16}
+                  className={`${inputClass} min-h-[420px] resize-y leading-7`}
+                />
+
+                <input
+                  value={moduleVideoUrl}
+                  onChange={(e) => setModuleVideoUrl(e.target.value)}
+                  placeholder="Optional YouTube video URL"
+                  className={inputClass}
+                />
+              </div>
+
+              {/* ================= QUIZ SECTION ================= */}
+              <div className="mt-8 border-t border-[#F0EAF7] pt-6">
+                <h4 className="text-[18px] font-semibold text-gray-900 mb-4">
+                  Quiz Questions
+                </h4>
+
+                {moduleModalMode === "add" && (
+                  <div className="mb-4 text-yellow-600 text-[14px]">
+                    Save module first before adding questions
+                  </div>
+                )}
+
+                {moduleModalMode === "edit" && (
+                  <>
+                    {/* Question Form */}
+                    <div className="space-y-4 bg-[#FCFBFE] border border-[#F2EDF8] p-5 rounded-[24px]">
+                      <textarea
+                        value={questionText}
+                        onChange={(e) => setQuestionText(e.target.value)}
+                        placeholder="Question"
+                        rows={2}
+                        className={`${inputClass} resize-none`}
+                      />
+
+                      <div>
+                        <label className="text-[14px] font-medium text-gray-600">
+                          Question Image (optional)
+                        </label>
+
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setQuestionImageFile(file);
+                            }
+                          }}
+                          className="mt-2 w-full rounded-[18px] border border-[#F0EAF7] bg-white px-4 py-3 text-[13px] text-gray-500"
+                        />
+
+                        {(questionImageFile || questionImageUrl) && (
+                          <div className="mt-3 min-h-[260px] w-full overflow-hidden rounded-[20px] border border-[#F2EDF8] bg-[#F8F4FC] flex items-center justify-center p-3">
+                            <img
+                              src={
+                                questionImageFile
+                                  ? URL.createObjectURL(questionImageFile)
+                                  : questionImageUrl
+                              }
+                              alt="Question preview"
+                              className="max-h-[360px] w-full object-contain rounded-[16px]"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {[optionA, optionB, optionC, optionD].map((val, i) => {
+                          const setters = [
+                            setOptionA,
+                            setOptionB,
+                            setOptionC,
+                            setOptionD,
+                          ];
+
+                          return (
+                            <input
+                              key={i}
+                              value={val}
+                              onChange={(e) => setters[i](e.target.value)}
+                              placeholder={`Option ${i + 1}`}
+                              className={inputClass}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      <select
+                        value={correctAnswerIndex}
+                        onChange={(e) =>
+                          setCorrectAnswerIndex(Number(e.target.value))
+                        }
+                        className={inputClass}
+                      >
+                        <option value={0}>Correct: Option 1</option>
+                        <option value={1}>Correct: Option 2</option>
+                        <option value={2}>Correct: Option 3</option>
+                        <option value={3}>Correct: Option 4</option>
+                      </select>
+
+                      <textarea
+                        value={questionExplanation}
+                        onChange={(e) =>
+                          setQuestionExplanation(e.target.value)
+                        }
+                        placeholder="Explanation"
+                        rows={2}
+                        className={`${inputClass} resize-none`}
+                      />
+
+                      <div className="flex justify-end">
+                        <button
+                          onClick={saveQuestion}
+                          disabled={questionSaving}
+                          className="px-5 py-3 rounded-[18px] bg-[#B72AD7] text-white text-[14px]"
+                        >
+                          {questionSaving
+                            ? "Saving..."
+                            : questionMode === "add"
+                            ? "Add Question"
+                            : "Update Question"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Question List */}
+                    <div className="mt-5 space-y-3">
+                      {moduleQuestions.map((q, idx) => (
+                        <div
+                          key={q.id}
+                          className="rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] p-4"
+                        >
+                          <div className="flex justify-between gap-4">
+                            <p className="font-semibold text-gray-900">
+                              {idx + 1}. {q.questionText}
+                            </p>
+
+                            <div className="flex gap-2 shrink-0">
+                              <button
+                                onClick={() => startEditQuestion(q)}
+                                className="text-[13px] px-3 py-1 border rounded-full"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteQuestion(q.id)}
+                                className="text-[13px] px-3 py-1 border rounded-full text-red-600"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+
+                          {q.imageUrl && (
+                            <div className="mt-3 min-h-[180px] w-full rounded-[18px] border border-[#F2EDF8] bg-white flex items-center justify-center p-3">
+                              <img
+                                src={q.imageUrl}
+                                alt="Saved question"
+                                className="max-h-[260px] w-full object-contain rounded-[14px]"
+                              />
+                            </div>
+                          )}
+
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            {(q.options || []).map((opt, i) => (
+                              <div
+                                key={i}
+                                className={`px-3 py-2 rounded-lg text-[12px] ${
+                                  i === q.correctAnswerIndex
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-white text-gray-500"
+                                }`}
+                              >
+                                {i + 1}. {opt}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="mt-7 flex justify-end gap-3">
+                <button
+                  onClick={closeModuleModal}
+                  className="px-5 py-3 rounded-[18px] border border-[#F0EAF7]"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={saveModule}
+                  disabled={moduleSaving}
+                  className="px-5 py-3 rounded-[18px] bg-gradient-to-r from-[#D946EF] to-[#9333EA] text-white"
+                >
+                  {moduleSaving ? "Saving..." : "Save Module"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
-
-      {/* Footer */}
-      <div className="mt-7 flex justify-end gap-3">
-        <button
-          onClick={closeModuleModal}
-          className="px-5 py-3 rounded-[18px] border border-[#F0EAF7]"
-        >
-          Cancel
-        </button>
-
-        <button
-          onClick={saveModule}
-          disabled={moduleSaving}
-          className="px-5 py-3 rounded-[18px] bg-gradient-to-r from-[#D946EF] to-[#9333EA] text-white"
-        >
-          {moduleSaving ? "Saving..." : "Save Module"}
-        </button>
-      </div>
     </div>
-  </div>
-)}
-    </div>
-  </div>
-);
+  );
 }

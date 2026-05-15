@@ -15,7 +15,7 @@ import {
   query as firestoreQuery,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "../firebase/firebase"; // adjust if your firebase file path is different
+import { db } from "../firebase/firebase";
 
 function formatDate(value) {
   if (!value) return "Not available";
@@ -102,6 +102,9 @@ export default function Users() {
   const [loading, setLoading] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState(null);
 
+  const gridCols =
+    "grid grid-cols-[280px_minmax(260px,1fr)_120px_120px_155px_180px] items-center";
+
   useEffect(() => {
     const usersRef = collection(db, "users");
     const q = firestoreQuery(usersRef, orderBy("createdAt", "desc"));
@@ -111,7 +114,6 @@ export default function Users() {
       (snapshot) => {
         const userList = snapshot.docs.map((docSnap) => {
           const data = docSnap.data();
-
           const isDisabled = data.disabled === true || data.status === "Disabled";
 
           return {
@@ -237,17 +239,19 @@ export default function Users() {
           </div>
 
           <div className="overflow-x-auto">
-            <div className="min-w-[1030px]">
-              <div className="grid grid-cols-[260px_260px_120px_120px_150px_170px] items-center px-6 py-4 text-[13px] font-semibold text-gray-400 border-b border-[#F3EEF8]">
-                <div>User Email</div>
+            <div className="min-w-[1120px]">
+              <div
+                className={`${gridCols} px-8 py-4 text-[13px] font-semibold text-gray-400 border-b border-[#F3EEF8]`}
+              >
                 <div>Name</div>
+                <div>Email</div>
                 <div>Role</div>
                 <div>Status</div>
                 <div>Registered On</div>
                 <div className="text-right">Access Control</div>
               </div>
 
-              <div className="p-4 space-y-3">
+              <div className="px-4 py-4 space-y-3">
                 {loading && (
                   <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-14 text-center">
                     <Loader2
@@ -268,16 +272,30 @@ export default function Users() {
                     return (
                       <div
                         key={u.id}
-                        className="grid grid-cols-[230px_200px_130px_130px_160px_180px] items-center rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-4 text-[14px] text-gray-700 hover:bg-white hover:shadow-[0_12px_30px_rgba(30,20,60,0.05)] transition-all duration-200"
+                        className={`${gridCols} rounded-[22px] bg-[#FCFBFE] border border-[#F2EDF8] px-8 py-4 text-[14px] text-gray-700 hover:bg-white hover:shadow-[0_12px_30px_rgba(30,20,60,0.05)] transition-all duration-200`}
                       >
-                       <div className="leading-tight">
-                          <p className="font-semibold text-gray-950 truncate">
+                        <div className="min-w-0 pr-5">
+                          <p
+                            className="font-semibold text-gray-950 truncate"
+                            title={u.name}
+                          >
                             {u.name}
+                          </p>
+                          <p
+                            className="text-[12px] text-gray-400 mt-1 truncate"
+                            title={u.id}
+                          >
+                            ID: {u.id}
                           </p>
                         </div>
 
-                        <div className="text-gray-500 truncate">
-                          {u.email}
+                        <div className="min-w-0 pr-5">
+                          <p
+                            className="text-gray-500 truncate"
+                            title={u.email}
+                          >
+                            {u.email}
+                          </p>
                         </div>
 
                         <div>
@@ -300,7 +318,7 @@ export default function Users() {
                           </span>
                         </div>
 
-                        <div className="font-medium text-gray-400">
+                        <div className="font-medium text-gray-500">
                           {u.registeredOn}
                         </div>
 

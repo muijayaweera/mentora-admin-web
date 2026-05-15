@@ -56,11 +56,6 @@ function formatDate(value) {
   return "Not available";
 }
 
-function shortText(value, count = 18) {
-  if (!value) return "Unknown";
-  return value.length > count ? `${value.slice(0, count)}...` : value;
-}
-
 function statusPillClasses(status) {
   switch (status) {
     case "Approved for Retraining":
@@ -113,6 +108,9 @@ export default function ImageReview() {
   const [previewImage, setPreviewImage] = useState(null);
   const [label, setLabel] = useState("Healthy Stoma");
 
+  const gridCols =
+    "grid grid-cols-[100px_280px_minmax(230px,1fr)_125px_230px_155px_125px] items-center";
+
   const active = useMemo(
     () => images.find((img) => img.id === openReviewId) || null,
     [images, openReviewId]
@@ -132,9 +130,11 @@ export default function ImageReview() {
             id: docSnap.id,
             thumbUrl: data.imageUrl || data.thumbUrl || "",
             uploadedBy:
-                data.uploadedByName || data.uploadedBy || data.uploadedByEmail || "Unknown user",
-              uploadedByEmail:
-                data.uploadedBy || data.uploadedByEmail || "",
+              data.uploadedByName ||
+              data.uploadedBy ||
+              data.uploadedByEmail ||
+              "Unknown user",
+            uploadedByEmail: data.uploadedBy || data.uploadedByEmail || "",
             prediction: data.prediction || "Unknown",
             confidence: data.confidence || 0,
             status: data.status || "Pending Review",
@@ -315,8 +315,10 @@ export default function ImageReview() {
           </div>
 
           <div className="overflow-x-auto">
-            <div className="min-w-[1120px]">
-              <div className="grid grid-cols-[100px_230px_210px_130px_190px_150px_120px] items-center px-7 py-4 text-[13px] font-semibold text-gray-400 border-b border-[#F3EEF8]">
+            <div className="min-w-[1260px]">
+              <div
+                className={`${gridCols} px-8 py-4 text-[13px] font-semibold text-gray-400 border-b border-[#F3EEF8]`}
+              >
                 <div>Image</div>
                 <div>Uploaded By</div>
                 <div>Model Prediction</div>
@@ -326,7 +328,7 @@ export default function ImageReview() {
                 <div className="text-right">Action</div>
               </div>
 
-              <div className="p-4 space-y-3">
+              <div className="px-4 py-4 space-y-3">
                 {loading && (
                   <div className="rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-6 py-14 text-center">
                     <Loader2
@@ -343,7 +345,7 @@ export default function ImageReview() {
                   filtered.map((img) => (
                     <div
                       key={img.id}
-                      className="grid grid-cols-[100px_230px_210px_130px_190px_150px_120px] items-center rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-7 py-4 text-[14px] text-gray-700 hover:bg-white hover:shadow-[0_12px_30px_rgba(30,20,60,0.05)] transition-all duration-200"
+                      className={`${gridCols} rounded-[24px] bg-[#FCFBFE] border border-[#F2EDF8] px-8 py-4 text-[14px] text-gray-700 hover:bg-white hover:shadow-[0_12px_30px_rgba(30,20,60,0.05)] transition-all duration-200`}
                     >
                       <div>
                         {img.thumbUrl ? (
@@ -368,12 +370,12 @@ export default function ImageReview() {
                         )}
                       </div>
 
-                      <div className="min-w-0">
+                      <div className="min-w-0 pr-6">
                         <p
-                          className="font-semibold text-gray-900 truncate"
+                          className="font-semibold text-gray-950 truncate"
                           title={img.uploadedBy}
                         >
-                          {shortText(img.uploadedBy, 24)}
+                          {img.uploadedBy}
                         </p>
                         <p
                           className="text-[12px] text-gray-400 mt-1 truncate"
@@ -381,10 +383,13 @@ export default function ImageReview() {
                         >
                           {img.uploadedByEmail || img.id}
                         </p>
-                                              </div>
+                      </div>
 
-                      <div className="min-w-0">
-                        <p className="font-semibold text-gray-950 truncate">
+                      <div className="min-w-0 pr-6">
+                        <p
+                          className="font-semibold text-gray-950 truncate"
+                          title={img.prediction}
+                        >
                           {img.prediction}
                         </p>
                         <p className="text-[12px] text-gray-400 mt-1">
@@ -398,17 +403,18 @@ export default function ImageReview() {
                         </span>
                       </div>
 
-                      <div>
+                      <div className="pr-5">
                         <span
-                          className={`inline-flex rounded-full border px-3 py-1.5 text-[12px] font-semibold ${statusPillClasses(
+                          className={`inline-flex max-w-[190px] rounded-full border px-3 py-1.5 text-[12px] font-semibold truncate ${statusPillClasses(
                             img.status
                           )}`}
+                          title={img.status}
                         >
                           {img.status}
                         </span>
                       </div>
 
-                      <div className="font-medium text-gray-400">
+                      <div className="font-medium text-gray-500">
                         {img.uploadedOn}
                       </div>
 
